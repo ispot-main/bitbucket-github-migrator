@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/google/go-github/v72/github"
 	"github.com/joho/godotenv"
@@ -16,8 +17,8 @@ func main() {
 	var dryRun bool
 	flag.StringVar(&repoListFile, "file", "", "List of repositories to migrate with one repo url on each line")
 	flag.BoolVar(&dryRun, "dryRun", false, "Whether to do a dry run or not")
-	// todo convert repolistFile to repoList
 	flag.Parse()
+
 	if dryRun {
 		fmt.Println("Dry Run - not actually migrating anything")
 		// todo rest of dryrun logic
@@ -33,6 +34,7 @@ func main() {
 	bbPassword := os.Getenv("BITBUCKET_TOKEN")
 	ghOrg := os.Getenv("GITHUB_ORG")
 	ghToken := os.Getenv("GITHUB_TOKEN")
+	envVarRepos := os.Getenv("REPOS")
 
 	if bbWorkspace == "" || bbUsername == "" || bbPassword == "" {
 		fmt.Println("BITBUCKET_WORKSPACE or BITBUCKET_USER or BITBUCKET_TOKEN not set in .env file or env vars")
@@ -44,19 +46,36 @@ func main() {
 		os.Exit(2)
 	}
 
+	var repos []string
+	if envVarRepos != "" {
+		repos = strings.Split(string(envVarRepos), ",")
+	} else {
+		if repoListFile == "" {
+			fmt.Println("You must supply a list of repos to migrate")
+			os.Exit(2)
+		}
+		data, err := os.ReadFile(repoListFile)
+		if err != nil {
+			log.Fatalf("could not read file %s", repoListFile)
+		}
+		repos = strings.Split(string(data), "\n")
+	}
+
 	bitbucketClient := bitbucket.NewBasicAuth(bbUsername, bbPassword)
 	githubClient := github.NewClient(nil).WithAuthToken(ghToken)
 
-	migrateRepos(githubClient, bitbucketClient, bbWorkspace, ghOrg, []string{"atc-cli"}, dryRun)
+	migrateRepos(githubClient, bitbucketClient, bbWorkspace, ghOrg, repos, dryRun)
 }
 
 func migrateRepos(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, ghOrg string, repoList []string, dryRun bool) {
 	for _, repo := range repoList {
+		repo = strings.TrimSpace(repo)
 		migrateRepo(gh, bb, bbWorkspace, ghOrg, repo)
 	}
 }
 
 func migrateRepo(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, ghOrg string, repoName string) {
+	fmt.Printf("Migrating repo %s\n", repoName)
 	bbRepo := getRepo(bb, bbWorkspace, repoName)
 	repoFolder := cloneRepo(bbWorkspace, repoName)
 	ghRepo := createRepo(gh, ghOrg, bbRepo)
