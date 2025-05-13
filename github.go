@@ -1,0 +1,107 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os/exec"
+	"strings"
+	"time"
+
+	"github.com/google/go-github/v72/github"
+	"github.com/ktrysmt/go-bitbucket"
+)
+
+func createRepo(gh *github.Client, githubOrg string, repo *bitbucket.Repository) *github.Repository {
+	ghRepo := &github.Repository{
+		Name:          github.Ptr(repo.Name),
+		Private:       github.Ptr(repo.Is_private),
+		Description:   github.Ptr(repo.Description),
+		DefaultBranch: github.Ptr(repo.Mainbranch.Name),
+		Language:      github.Ptr(repo.Language),
+		Organization: &github.Organization{
+			Name: github.Ptr(githubOrg),
+		},
+		Topics: []string{"migratedFromBitbucket"},
+	}
+	// todo bitbucket project as custom property?
+	fmt.Printf("Creating repo %s/%s", githubOrg, repo.Name)
+	repoCreated := false
+	_, _, err := gh.Repositories.Create(context.Background(), githubOrg, ghRepo)
+	if err != nil {
+		if strings.Contains(err.Error(), "name already exists on this account") {
+			// it's fine if a repo already exists
+			// if it's not just a earlier version of the repo we are migrating the git push will fail
+			repoCreated = true
+		} else {
+			log.Fatalf("failed to create repo %s, error: %s", repo.Name, err)
+		}
+	}
+
+	if repoCreated {
+		return ghRepo
+	}
+
+	// The repository might not have been created yet
+	// Wait for the repository to be available
+	for i := 0; i < 20; i++ {
+		time.Sleep(200 * time.Millisecond)
+		response, _, _ := gh.Repositories.Get(context.Background(), githubOrg, repo.Name)
+		if response != nil {
+			log.Print("Repo has been created!")
+			return ghRepo
+		}
+		log.Printf("Waiting for repo %s to be available on GitHub (attempt %d)...", repo.Name, i+1)
+		// Wait for a short period before retrying
+		time.Sleep(1 * time.Second)
+	}
+	log.Fatalf("Repo has still not been created")
+	return nil
+}
+
+// you need to call this after createRepo and pushRepoToGithub because
+// topics can't be updated until the repository has contents
+func updateRepoTopics(gh *github.Client, githubOrg string, ghRepo *github.Repository) {
+	fmt.Printf("Updating repo %s/%s settings\n", githubOrg, *ghRepo.Name)
+	_, _, err := gh.Repositories.ReplaceAllTopics(context.Background(), githubOrg, *ghRepo.Name, ghRepo.Topics)
+	if err != nil {
+		log.Fatalf("failed to update repo %s, error: %s", *ghRepo.Name, err)
+	}
+}
+
+func pushRepoToGithub(githubOrg string, repoFolder string, repoName string) {
+	log.Println()
+	log.Printf("pushing repo %s to github", repoName)
+
+	cmd := exec.Command("git", "remote", "remove", "origin")
+	cmd.Dir = repoFolder
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Fatalf("Failed to remove old git remote origin: %s\nOutput: %s", err, string(output))
+	}
+	fmt.Println("Removed origin remote successfully")
+
+	cmd = exec.Command("git", "remote", "add", "origin", fmt.Sprintf("https://github.com/%s/%s.git", githubOrg, repoName))
+	cmd.Dir = repoFolder
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		log.Fatalf("Failed to add new git origin: %s\nOutput: %s", err, string(output))
+	}
+	fmt.Println(string(output))
+
+	cmd = exec.Command("git", "branch", "--show-current")
+	cmd.Dir = repoFolder
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		log.Fatalf("Failed to get current git branch: %s\nOutput: %s", err, string(output))
+	}
+	branch := strings.TrimSpace(string(output))
+
+	cmd = exec.Command("git", "push", "-u", "origin", branch)
+	cmd.Dir = repoFolder
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		log.Fatalf("Failed to push: %s\nOutput: %s", err, string(output))
+	}
+	fmt.Println(string(output))
+}
