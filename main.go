@@ -28,14 +28,14 @@ func main() {
 		log.Fatalf("Error loading .env file")
 	}
 
-	bbOrg := os.Getenv("BITBUCKET_ORG")
+	bbWorkspace := os.Getenv("BITBUCKET_WORKSPACE")
 	bbUsername := os.Getenv("BITBUCKET_USER")
 	bbPassword := os.Getenv("BITBUCKET_TOKEN")
 	ghOrg := os.Getenv("GITHUB_ORG")
 	ghToken := os.Getenv("GITHUB_TOKEN")
 
-	if bbOrg == "" || bbUsername == "" || bbPassword == "" {
-		fmt.Println("BITBUCKET_ORG or BITBUCKET_USER or BITBUCKET_TOKEN not set in .env file or env vars")
+	if bbWorkspace == "" || bbUsername == "" || bbPassword == "" {
+		fmt.Println("BITBUCKET_WORKSPACE or BITBUCKET_USER or BITBUCKET_TOKEN not set in .env file or env vars")
 		os.Exit(2)
 	}
 
@@ -47,18 +47,18 @@ func main() {
 	bitbucketClient := bitbucket.NewBasicAuth(bbUsername, bbPassword)
 	githubClient := github.NewClient(nil).WithAuthToken(ghToken)
 
-	migrateRepos(githubClient, bitbucketClient, bbOrg, ghOrg, []string{"atc-cli"}, dryRun)
+	migrateRepos(githubClient, bitbucketClient, bbWorkspace, ghOrg, []string{"atc-cli"}, dryRun)
 }
 
-func migrateRepos(gh *github.Client, bb *bitbucket.Client, bbOrg string, ghOrg string, repoList []string, dryRun bool) {
+func migrateRepos(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, ghOrg string, repoList []string, dryRun bool) {
 	for _, repo := range repoList {
-		migrateRepo(gh, bb, bbOrg, ghOrg, repo)
+		migrateRepo(gh, bb, bbWorkspace, ghOrg, repo)
 	}
 }
 
-func migrateRepo(gh *github.Client, bb *bitbucket.Client, bbOrg string, ghOrg string, repoName string) {
-	bbRepo := getRepo(bb, bbOrg, repoName)
-	repoFolder := cloneRepo(bbOrg, repoName)
+func migrateRepo(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, ghOrg string, repoName string) {
+	bbRepo := getRepo(bb, bbWorkspace, repoName)
+	repoFolder := cloneRepo(bbWorkspace, repoName)
 	ghRepo := createRepo(gh, ghOrg, bbRepo)
 	pushRepoToGithub(ghOrg, repoFolder, *ghRepo.Name)
 	updateRepoTopics(gh, ghOrg, ghRepo)
