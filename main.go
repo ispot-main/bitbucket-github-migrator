@@ -64,31 +64,39 @@ func main() {
 
 func parseRepos(repoListFile string) []string {
 	var repos []string
-	envVarRepos := os.Getenv("REPOS")
-	if envVarRepos != "" {
-		repos = strings.Split(string(envVarRepos), ",")
-	} else {
-		if repoListFile == "" {
-			fmt.Println("You must supply a list of repos to migrate")
-			os.Exit(2)
-		}
-		data, err := os.ReadFile(repoListFile)
-		if err != nil {
-			log.Fatalf("could not read file %s", repoListFile)
-		}
-		repos = strings.Split(string(data), "\n")
+	if envVarRepos := os.Getenv("REPO_FILE"); envVarRepos != "" {
+		repoListFile = string(envVarRepos)
 	}
-	for index, repo := range repos {
-		// space is not a valid bitbucket repo character
-		// bitbucket uses - instead
-		repos[index] = strings.ReplaceAll(strings.TrimSpace(repo), " ", "-")
+	if repoListFile == "" {
+		fmt.Println("You must supply a list of repos to migrate")
+		os.Exit(2)
 	}
-	return repos
+	data, err := os.ReadFile(strings.TrimSpace(repoListFile))
+	if err != nil {
+		log.Fatalf("could not read file %s", repoListFile)
+	}
+	repos = strings.Split(string(data), "\n")
+
+	cleaned_repos := []string{}
+	for _, repo := range repos {
+		repo = strings.TrimSpace(repo)
+		if repo != "" {
+			// bitbucket replaces invalid chars with -
+			// see https://support.atlassian.com/bitbucket-cloud/kb/what-is-a-repository-slug/
+			repo = strings.ReplaceAll(repo, " ", "-")
+			repo = strings.ReplaceAll(repo, "/", "-")
+			repo = strings.ReplaceAll(repo, "+", "-")
+			repo = strings.ReplaceAll(repo, "&", "-")
+			repo = strings.ReplaceAll(repo, "(", "-")
+			repo = strings.ReplaceAll(repo, ")", "-")
+			cleaned_repos = append(cleaned_repos, repo)
+		}
+	}
+	return cleaned_repos
 }
 
 func migrateRepos(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, ghOrg string, repoList []string, dryRun bool) {
 	for _, repo := range repoList {
-		repo = strings.TrimSpace(repo)
 		migrateRepo(gh, bb, bbWorkspace, ghOrg, repo, dryRun)
 	}
 }
