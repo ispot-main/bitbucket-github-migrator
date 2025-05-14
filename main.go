@@ -97,12 +97,16 @@ func migrateRepos(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, g
 	}
 
 	for _, repo := range repoList {
+		if dryRun {
+			fmt.Println("Pretend migrating repo", repo)
+		} else {
+			fmt.Println("Migrating repo", repo)
+		}
 		migrateRepo(gh, bb, bbWorkspace, ghOrg, repo, dryRun)
 	}
 }
 
 func migrateRepo(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, ghOrg string, repoName string, dryRun bool) {
-	fmt.Printf("Migrating repo %s\n", repoName)
 	bbRepo := getRepo(bb, bbWorkspace, repoName)
 	repoFolder := cloneRepo(bbWorkspace, repoName)
 	if !dryRun {
