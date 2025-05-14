@@ -12,7 +12,7 @@ import (
 	"github.com/ktrysmt/go-bitbucket"
 )
 
-func createRepo(gh *github.Client, githubOrg string, repo *bitbucket.Repository) *github.Repository {
+func createRepo(gh *github.Client, githubOrg string, repo *bitbucket.Repository, dryRun bool) *github.Repository {
 	ghRepo := &github.Repository{
 		Name:          github.Ptr(repo.Name),
 		Private:       github.Ptr(repo.Is_private),
@@ -24,6 +24,11 @@ func createRepo(gh *github.Client, githubOrg string, repo *bitbucket.Repository)
 		},
 		Topics: []string{"migratedFromBitbucket"},
 	}
+
+	if dryRun {
+		return ghRepo
+	}
+
 	// todo bitbucket project as custom property?
 	fmt.Printf("Creating repo %s/%s", githubOrg, repo.Name)
 	repoCreated := false
@@ -61,7 +66,11 @@ func createRepo(gh *github.Client, githubOrg string, repo *bitbucket.Repository)
 
 // you need to call this after createRepo and pushRepoToGithub because
 // topics can't be updated until the repository has contents
-func updateRepoTopics(gh *github.Client, githubOrg string, ghRepo *github.Repository) {
+func updateRepoTopics(gh *github.Client, githubOrg string, ghRepo *github.Repository, dryRun bool) {
+	if dryRun {
+		fmt.Println("Mock updating repo topics")
+		return
+	}
 	fmt.Printf("Updating repo %s/%s settings\n", githubOrg, *ghRepo.Name)
 	_, _, err := gh.Repositories.ReplaceAllTopics(context.Background(), githubOrg, *ghRepo.Name, ghRepo.Topics)
 	if err != nil {
@@ -69,9 +78,7 @@ func updateRepoTopics(gh *github.Client, githubOrg string, ghRepo *github.Reposi
 	}
 }
 
-func pushRepoToGithub(githubOrg string, repoFolder string, repoName string) {
-	log.Println()
-	log.Printf("pushing repo %s to github", repoName)
+func pushRepoToGithub(githubOrg string, repoFolder string, repoName string, dryRun bool) {
 
 	cmd := exec.Command("git", "remote", "remove", "origin")
 	cmd.Dir = repoFolder
@@ -79,7 +86,6 @@ func pushRepoToGithub(githubOrg string, repoFolder string, repoName string) {
 	if err != nil {
 		log.Fatalf("Failed to remove old git remote origin: %s\nOutput: %s", err, string(output))
 	}
-	fmt.Println("Removed origin remote successfully")
 
 	cmd = exec.Command("git", "remote", "add", "origin", fmt.Sprintf("https://github.com/%s/%s.git", githubOrg, repoName))
 	cmd.Dir = repoFolder
@@ -96,6 +102,13 @@ func pushRepoToGithub(githubOrg string, repoFolder string, repoName string) {
 		log.Fatalf("Failed to get current git branch: %s\nOutput: %s", err, string(output))
 	}
 	branch := strings.TrimSpace(string(output))
+
+	if dryRun {
+		return
+	}
+
+	log.Println()
+	log.Printf("pushing repo %s to github", repoName)
 
 	cmd = exec.Command("git", "push", "-u", "origin", branch)
 	cmd.Dir = repoFolder

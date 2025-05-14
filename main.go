@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/google/go-github/v72/github"
@@ -21,7 +22,6 @@ func main() {
 
 	if dryRun {
 		fmt.Println("Dry Run - not actually migrating anything")
-		// todo rest of dryrun logic
 	}
 
 	err := godotenv.Load(".env")
@@ -35,6 +35,15 @@ func main() {
 	ghOrg := os.Getenv("GITHUB_ORG")
 	ghToken := os.Getenv("GITHUB_TOKEN")
 	envVarRepos := os.Getenv("REPOS")
+	envVarDryRun := strings.ToLower(os.Getenv("GITHUB_DRYRUN"))
+
+	if envVarDryRun != "" {
+		dryRun, err = strconv.ParseBool(envVarDryRun)
+		if err != nil {
+			fmt.Println("could not parse bool env var GITHUB_DRYRUN")
+			os.Exit(2)
+		}
+	}
 
 	if bbWorkspace == "" || bbUsername == "" || bbPassword == "" {
 		fmt.Println("BITBUCKET_WORKSPACE or BITBUCKET_USER or BITBUCKET_TOKEN not set in .env file or env vars")
@@ -70,18 +79,25 @@ func main() {
 func migrateRepos(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, ghOrg string, repoList []string, dryRun bool) {
 	for _, repo := range repoList {
 		repo = strings.TrimSpace(repo)
-		migrateRepo(gh, bb, bbWorkspace, ghOrg, repo)
+		migrateRepo(gh, bb, bbWorkspace, ghOrg, repo, dryRun)
 	}
 }
 
-func migrateRepo(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, ghOrg string, repoName string) {
+func migrateRepo(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, ghOrg string, repoName string, dryRun bool) {
 	fmt.Printf("Migrating repo %s\n", repoName)
 	bbRepo := getRepo(bb, bbWorkspace, repoName)
 	repoFolder := cloneRepo(bbWorkspace, repoName)
-	ghRepo := createRepo(gh, ghOrg, bbRepo)
-	pushRepoToGithub(ghOrg, repoFolder, *ghRepo.Name)
-	updateRepoTopics(gh, ghOrg, ghRepo)
+	if !dryRun {
+		fmt.Println("mock migrating repo to Github...")
+	}
+	ghRepo := createRepo(gh, ghOrg, bbRepo, dryRun)
+	pushRepoToGithub(ghOrg, repoFolder, *ghRepo.Name, dryRun)
+	updateRepoTopics(gh, ghOrg, ghRepo, dryRun)
 	//prs := getPrs(bb, owner, repoName, repo.Mainbranch.Name)
-	//fmt.Println("mock migrating prs: ", prs.Values[0].Title)
+	if dryRun {
+		//fmt.Println("mock migrating prs: ", prs.Values[0].Title)
+	} else {
+		// todo: actually migrate PR's
+	}
 	fmt.Println("done migrating repo")
 }
