@@ -107,8 +107,7 @@ func pushRepoToGithub(githubOrg string, repoFolder string, repoName string, dryR
 		return
 	}
 
-	log.Println()
-	log.Printf("pushing repo %s to github", repoName)
+	log.Println("Pushing repo", repoName, "to github")
 
 	cmd = exec.Command("git", "push", "-u", "origin", branch)
 	cmd.Dir = repoFolder
