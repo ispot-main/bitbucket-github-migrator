@@ -20,10 +20,6 @@ func main() {
 	flag.BoolVar(&dryRun, "dryRun", false, "Whether to do a dry run or not")
 	flag.Parse()
 
-	if dryRun {
-		fmt.Println("Dry Run - not actually migrating anything")
-	}
-
 	err := godotenv.Load(".env")
 	if err != nil {
 		log.Fatalf("Error loading .env file")
@@ -96,6 +92,10 @@ func parseRepos(repoListFile string) []string {
 }
 
 func migrateRepos(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, ghOrg string, repoList []string, dryRun bool) {
+	if dryRun {
+		fmt.Println("Dry Run - not actually migrating anything")
+	}
+
 	for _, repo := range repoList {
 		migrateRepo(gh, bb, bbWorkspace, ghOrg, repo, dryRun)
 	}
