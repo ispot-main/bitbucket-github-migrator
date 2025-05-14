@@ -34,7 +34,6 @@ func main() {
 	bbPassword := os.Getenv("BITBUCKET_TOKEN")
 	ghOrg := os.Getenv("GITHUB_ORG")
 	ghToken := os.Getenv("GITHUB_TOKEN")
-	envVarRepos := os.Getenv("REPOS")
 	envVarDryRun := strings.ToLower(os.Getenv("GITHUB_DRYRUN"))
 
 	if envVarDryRun != "" {
@@ -55,7 +54,17 @@ func main() {
 		os.Exit(2)
 	}
 
+	repos := parseRepos(repoListFile)
+
+	bitbucketClient := bitbucket.NewBasicAuth(bbUsername, bbPassword)
+	githubClient := github.NewClient(nil).WithAuthToken(ghToken)
+
+	migrateRepos(githubClient, bitbucketClient, bbWorkspace, ghOrg, repos, dryRun)
+}
+
+func parseRepos(repoListFile string) []string {
 	var repos []string
+	envVarRepos := os.Getenv("REPOS")
 	if envVarRepos != "" {
 		repos = strings.Split(string(envVarRepos), ",")
 	} else {
@@ -69,11 +78,12 @@ func main() {
 		}
 		repos = strings.Split(string(data), "\n")
 	}
-
-	bitbucketClient := bitbucket.NewBasicAuth(bbUsername, bbPassword)
-	githubClient := github.NewClient(nil).WithAuthToken(ghToken)
-
-	migrateRepos(githubClient, bitbucketClient, bbWorkspace, ghOrg, repos, dryRun)
+	for index, repo := range repos {
+		// space is not a valid bitbucket repo character
+		// bitbucket uses - instead
+		repos[index] = strings.ReplaceAll(strings.TrimSpace(repo), " ", "-")
+	}
+	return repos
 }
 
 func migrateRepos(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, ghOrg string, repoList []string, dryRun bool) {
