@@ -14,7 +14,7 @@ import (
 
 func createRepo(gh *github.Client, githubOrg string, repo *bitbucket.Repository, dryRun bool) *github.Repository {
 	ghRepo := &github.Repository{
-		Name:          github.Ptr(repo.Name),
+		Name:          github.Ptr(repo.Slug),
 		Private:       github.Ptr(repo.Is_private),
 		Description:   github.Ptr(repo.Description),
 		DefaultBranch: github.Ptr(repo.Mainbranch.Name),
@@ -30,7 +30,7 @@ func createRepo(gh *github.Client, githubOrg string, repo *bitbucket.Repository,
 	}
 
 	// todo bitbucket project as custom property?
-	fmt.Printf("Creating repo %s/%s", githubOrg, repo.Name)
+	fmt.Printf("Creating repo %s/%s", githubOrg, repo.Slug)
 	repoCreated := false
 	_, _, err := gh.Repositories.Create(context.Background(), githubOrg, ghRepo)
 	if err != nil {
@@ -39,7 +39,7 @@ func createRepo(gh *github.Client, githubOrg string, repo *bitbucket.Repository,
 			// if it's not just a earlier version of the repo we are migrating the git push will fail
 			repoCreated = true
 		} else {
-			log.Fatalf("failed to create repo %s, error: %s", repo.Name, err)
+			log.Fatalf("failed to create repo %s, error: %s", repo.Slug, err)
 		}
 	}
 
@@ -51,12 +51,12 @@ func createRepo(gh *github.Client, githubOrg string, repo *bitbucket.Repository,
 	// Wait for the repository to be available
 	for i := 0; i < 20; i++ {
 		time.Sleep(200 * time.Millisecond)
-		response, _, _ := gh.Repositories.Get(context.Background(), githubOrg, repo.Name)
+		response, _, _ := gh.Repositories.Get(context.Background(), githubOrg, repo.Slug)
 		if response != nil {
 			log.Print("Repo has been created!")
 			return ghRepo
 		}
-		log.Printf("Waiting for repo %s to be available on GitHub (attempt %d)...", repo.Name, i+1)
+		log.Printf("Waiting for repo %s to be available on GitHub (attempt %d)...", repo.Slug, i+1)
 		// Wait for a short period before retrying
 		time.Sleep(1 * time.Second)
 	}
