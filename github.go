@@ -101,14 +101,13 @@ func updateRepoDefaultBranch(gh *github.Client, githubOrg string, ghRepo *github
 // create pull requests
 func createPrs(gh *github.Client, githubOrg string, ghRepo *github.Repository, prs *PullRequests, dryRun bool) {
 	pr := prs.Values[0]
-	text := fmt.Sprintf("Bitbucket PR created on %s by %s\n\n%s", pr.CreatedOn, pr.Author["display_name"].(string), pr.Summary.Raw)
-	title := "Bitbucket PR: " + pr.Title
+	text := fmt.Sprintf("**Bitbucket PR created on %s by %s**\n\n%s", pr.CreatedOn, pr.Author["display_name"].(string), pr.Summary.Raw)
+	title := "Bitbucket PR #" + strconv.Itoa(pr.ID) + ": " + pr.Title
 	issue := &github.IssueRequest{
 		Title: &title,
 		Body:  &text,
 	}
 	if dryRun {
-		fmt.Println("Mock creating github issue")
 		return
 	}
 	fmt.Printf("Updating issue for PR %s\n", strconv.Itoa(pr.ID))
