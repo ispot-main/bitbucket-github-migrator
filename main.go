@@ -114,6 +114,7 @@ func migrateRepo(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, gh
 	}
 	ghRepo := createRepo(gh, ghOrg, bbRepo, dryRun)
 	pushRepoToGithub(ghOrg, repoFolder, *ghRepo.Name, dryRun)
+	updateRepoDefaultBranch(gh, ghOrg, ghRepo, dryRun)
 	updateRepoTopics(gh, ghOrg, ghRepo, dryRun)
 	//prs := getPrs(bb, owner, repoName, repo.Mainbranch.Name)
 	if dryRun {

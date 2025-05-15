@@ -71,32 +71,35 @@ func updateRepoTopics(gh *github.Client, githubOrg string, ghRepo *github.Reposi
 		fmt.Println("Mock updating repo topics")
 		return
 	}
-	fmt.Printf("Updating repo %s/%s settings\n", githubOrg, *ghRepo.Name)
+	fmt.Printf("Updating repo %s/%s topics\n", githubOrg, *ghRepo.Name)
 	_, _, err := gh.Repositories.ReplaceAllTopics(context.Background(), githubOrg, *ghRepo.Name, ghRepo.Topics)
 	if err != nil {
 		log.Fatalf("failed to update repo %s, error: %s", *ghRepo.Name, err)
 	}
 }
 
-func pushRepoToGithub(githubOrg string, repoFolder string, repoName string, dryRun bool) {
+// defaultBranch gets overwritten when we git push for some reason.
+// This func switches it back
+func updateRepoDefaultBranch(gh *github.Client, githubOrg string, ghRepo *github.Repository, dryRun bool) {
+	if dryRun {
+		fmt.Println("Mock updating repo default branch")
+		return
+	}
+	fmt.Printf("Updating repo %s/%s default branch\n", githubOrg, *ghRepo.Name)
+	_, _, err := gh.Repositories.Edit(context.Background(), githubOrg, *ghRepo.Name, ghRepo)
+	if err != nil {
+		log.Fatalf("failed to update repo %s, error: %s", *ghRepo.Name, err)
+	}
+}
 
-	cmd := exec.Command("git", "fetch", "--all")
+// pushes all repo branches&tags to Github with --mirror option.
+// default branch may get updated as a side-effect
+func pushRepoToGithub(githubOrg string, repoFolder string, repoName string, dryRun bool) {
+	const newOrigin string = "newOrigin"
+
+	cmd := exec.Command("git", "remote", "add", newOrigin, fmt.Sprintf("https://github.com/%s/%s.git", githubOrg, repoName))
 	cmd.Dir = repoFolder
 	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Fatalf("Failed to fetch git branches: %s\nOutput: %s", err, string(output))
-	}
-
-	// cmd = exec.Command("git", "pull", "--all")
-	// cmd.Dir = repoFolder
-	// output, err = cmd.CombinedOutput()
-	// if err != nil {
-	// 	log.Fatalf("Failed to get pull git branches: %s\nOutput: %s", err, string(output))
-	// }
-
-	cmd = exec.Command("git", "remote", "add", "neworigin", fmt.Sprintf("https://github.com/%s/%s.git", githubOrg, repoName))
-	cmd.Dir = repoFolder
-	output, err = cmd.CombinedOutput()
 	if err != nil {
 		log.Fatalf("Failed to add new git origin: %s\nOutput: %s", err, string(output))
 	}
@@ -108,7 +111,7 @@ func pushRepoToGithub(githubOrg string, repoFolder string, repoName string, dryR
 
 	log.Println("Pushing repo", repoName, "to github")
 
-	cmd = exec.Command("git", "push", "neworigin", "--tags", "refs/remotes/origin/*:refs/heads/*")
+	cmd = exec.Command("git", "push", newOrigin, "--mirror")
 	cmd.Dir = repoFolder
 	output, err = cmd.CombinedOutput()
 	if err != nil {

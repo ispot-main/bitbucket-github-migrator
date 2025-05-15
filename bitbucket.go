@@ -32,7 +32,7 @@ func cloneRepo(owner string, repo string) (tempfolderpath string) {
 	cloneURL := fmt.Sprintf("https://bitbucket.org/%s/%s.git", owner, repo)
 	fmt.Printf("Cloning repository %s to %s\n", repo, tempDir)
 
-	cmd := exec.Command("git", "clone", cloneURL, tempDir)
+	cmd := exec.Command("git", "clone", "--mirror", cloneURL, tempDir)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Fatalf("Failed to clone repository: %s\nOutput: %s", err, string(output))
