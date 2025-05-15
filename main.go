@@ -121,7 +121,7 @@ func migrateRepo(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, gh
 	if dryRun {
 		fmt.Println("mock migrating prs: ", prs.Values[0].Title)
 	} else {
-		// todo: actually migrate PR's
+		createPrs(gh, ghOrg, ghRepo, prs, dryRun)
 	}
 	fmt.Println("done migrating repo")
 }

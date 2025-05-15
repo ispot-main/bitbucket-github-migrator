@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -94,6 +95,26 @@ func updateRepoDefaultBranch(gh *github.Client, githubOrg string, ghRepo *github
 	_, _, err := gh.Repositories.Edit(context.Background(), githubOrg, *ghRepo.Name, ghRepo)
 	if err != nil {
 		log.Fatalf("failed to update repo %s, error: %s", *ghRepo.Name, err)
+	}
+}
+
+// create pull requests
+func createPrs(gh *github.Client, githubOrg string, ghRepo *github.Repository, prs *PullRequests, dryRun bool) {
+	pr := prs.Values[0]
+	text := fmt.Sprintf("Bitbucket PR created on %s by %s\n\n%s", pr.CreatedOn, pr.Author["display_name"].(string), pr.Summary.Raw)
+	title := "Bitbucket PR: " + pr.Title
+	issue := &github.IssueRequest{
+		Title: &title,
+		Body:  &text,
+	}
+	if dryRun {
+		fmt.Println("Mock creating github issue")
+		return
+	}
+	fmt.Printf("Updating issue for PR %s\n", strconv.Itoa(pr.ID))
+	_, _, err := gh.Issues.Create(context.Background(), githubOrg, *ghRepo.Name, issue)
+	if err != nil {
+		log.Fatalf("failed to create issue for PR %s, error: %s", strconv.Itoa(pr.ID), err)
 	}
 }
 
