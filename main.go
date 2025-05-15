@@ -109,6 +109,8 @@ func migrateRepos(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, g
 func migrateRepo(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, ghOrg string, repoName string, dryRun bool) {
 	bbRepo := getRepo(bb, bbWorkspace, repoName)
 	repoFolder := cloneRepo(bbWorkspace, repoName)
+	prs := getPrs(bb, bbWorkspace, repoName, bbRepo.Mainbranch.Name)
+
 	if !dryRun {
 		fmt.Println("mock migrating repo to Github...")
 	}
@@ -116,9 +118,8 @@ func migrateRepo(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, gh
 	pushRepoToGithub(ghOrg, repoFolder, *ghRepo.Name, dryRun)
 	updateRepoDefaultBranch(gh, ghOrg, ghRepo, dryRun)
 	updateRepoTopics(gh, ghOrg, ghRepo, dryRun)
-	//prs := getPrs(bb, owner, repoName, repo.Mainbranch.Name)
 	if dryRun {
-		//fmt.Println("mock migrating prs: ", prs.Values[0].Title)
+		fmt.Println("mock migrating prs: ", prs.Values[0].Title)
 	} else {
 		// todo: actually migrate PR's
 	}
