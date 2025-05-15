@@ -80,14 +80,21 @@ func updateRepoTopics(gh *github.Client, githubOrg string, ghRepo *github.Reposi
 
 func pushRepoToGithub(githubOrg string, repoFolder string, repoName string, dryRun bool) {
 
-	cmd := exec.Command("git", "remote", "remove", "origin")
+	cmd := exec.Command("git", "fetch", "--all")
 	cmd.Dir = repoFolder
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Fatalf("Failed to remove old git remote origin: %s\nOutput: %s", err, string(output))
+		log.Fatalf("Failed to fetch git branches: %s\nOutput: %s", err, string(output))
 	}
 
-	cmd = exec.Command("git", "remote", "add", "origin", fmt.Sprintf("https://github.com/%s/%s.git", githubOrg, repoName))
+	// cmd = exec.Command("git", "pull", "--all")
+	// cmd.Dir = repoFolder
+	// output, err = cmd.CombinedOutput()
+	// if err != nil {
+	// 	log.Fatalf("Failed to get pull git branches: %s\nOutput: %s", err, string(output))
+	// }
+
+	cmd = exec.Command("git", "remote", "add", "neworigin", fmt.Sprintf("https://github.com/%s/%s.git", githubOrg, repoName))
 	cmd.Dir = repoFolder
 	output, err = cmd.CombinedOutput()
 	if err != nil {
@@ -95,21 +102,13 @@ func pushRepoToGithub(githubOrg string, repoFolder string, repoName string, dryR
 	}
 	fmt.Println(string(output))
 
-	cmd = exec.Command("git", "branch", "--show-current")
-	cmd.Dir = repoFolder
-	output, err = cmd.CombinedOutput()
-	if err != nil {
-		log.Fatalf("Failed to get current git branch: %s\nOutput: %s", err, string(output))
-	}
-	branch := strings.TrimSpace(string(output))
-
 	if dryRun {
 		return
 	}
 
 	log.Println("Pushing repo", repoName, "to github")
 
-	cmd = exec.Command("git", "push", "-u", "origin", branch)
+	cmd = exec.Command("git", "push", "neworigin", "--tags", "refs/remotes/origin/*:refs/heads/*")
 	cmd.Dir = repoFolder
 	output, err = cmd.CombinedOutput()
 	if err != nil {
