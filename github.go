@@ -12,6 +12,11 @@ import (
 	"github.com/ktrysmt/go-bitbucket"
 )
 
+// replaces invalid chars in input that are not allowed in Github topics
+func cleanTopic(input string) string {
+	return strings.ReplaceAll(strings.ToLower(input), " ", "-")
+}
+
 func createRepo(gh *github.Client, githubOrg string, repo *bitbucket.Repository, dryRun bool) *github.Repository {
 	ghRepo := &github.Repository{
 		Name:          github.Ptr(repo.Slug),
@@ -22,7 +27,7 @@ func createRepo(gh *github.Client, githubOrg string, repo *bitbucket.Repository,
 		Organization: &github.Organization{
 			Name: github.Ptr(githubOrg),
 		},
-		Topics: []string{"migratedFromBitbucket"},
+		Topics: []string{"migratedFromBitbucket", cleanTopic(repo.Project.Name)},
 	}
 
 	if dryRun {
@@ -74,7 +79,7 @@ func updateRepoTopics(gh *github.Client, githubOrg string, ghRepo *github.Reposi
 	fmt.Printf("Updating repo %s/%s topics\n", githubOrg, *ghRepo.Name)
 	_, _, err := gh.Repositories.ReplaceAllTopics(context.Background(), githubOrg, *ghRepo.Name, ghRepo.Topics)
 	if err != nil {
-		log.Fatalf("failed to update repo %s, error: %s", *ghRepo.Name, err)
+		log.Fatalf("failed to update topics for repo %s, error: %s", *ghRepo.Name, err)
 	}
 }
 
