@@ -111,9 +111,18 @@ func createPrs(gh *github.Client, githubOrg string, ghRepo *github.Repository, p
 		return
 	}
 	fmt.Printf("Updating issue for PR %s\n", strconv.Itoa(pr.ID))
-	_, _, err := gh.Issues.Create(context.Background(), githubOrg, *ghRepo.Name, issue)
+	issueResponse, _, err := gh.Issues.Create(context.Background(), githubOrg, *ghRepo.Name, issue)
 	if err != nil {
 		log.Fatalf("failed to create issue for PR %s, error: %s", strconv.Itoa(pr.ID), err)
+	}
+
+	commitHash := pr.MergeCommit.Hash
+	comment := &github.RepositoryComment{
+		Body: github.Ptr("Bitbucket PR details: #" + strconv.Itoa(*issueResponse.Number)),
+	}
+	_, _, err = gh.Repositories.CreateComment(context.Background(), githubOrg, *ghRepo.Name, commitHash, comment)
+	if err != nil {
+		log.Fatalf("failed to comment on commit %s: %s", commitHash, err)
 	}
 }
 
