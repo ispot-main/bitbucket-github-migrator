@@ -84,9 +84,7 @@ func updateRepoTopics(gh *github.Client, githubOrg string, ghRepo *github.Reposi
 	}
 }
 
-// defaultBranch gets overwritten when we git push for some reason.
-// This func switches it back
-func updateRepoDefaultBranch(gh *github.Client, githubOrg string, ghRepo *github.Repository, dryRun bool) {
+func updateRepo(gh *github.Client, githubOrg string, ghRepo *github.Repository, dryRun bool) {
 	if dryRun {
 		fmt.Println("Mock updating repo default branch")
 		return

@@ -116,7 +116,10 @@ func migrateRepo(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, gh
 	}
 	ghRepo := createRepo(gh, ghOrg, bbRepo, dryRun)
 	pushRepoToGithub(ghOrg, repoFolder, *ghRepo.Name, dryRun)
-	updateRepoDefaultBranch(gh, ghOrg, ghRepo, dryRun)
+	// defaultBranch gets overwritten when we git push for some reason
+	// we call updateRepo to switch it back
+	// Also useful if repo is already created in Github and we want to update with latest repo settings from bitbucket
+	updateRepo(gh, ghOrg, ghRepo, dryRun)
 	updateRepoTopics(gh, ghOrg, ghRepo, dryRun)
 	if dryRun {
 		fmt.Println("mock migrating prs: ", prs.Values[0].Title)
