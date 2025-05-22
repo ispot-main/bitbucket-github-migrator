@@ -102,8 +102,9 @@ func createPrs(gh *github.Client, githubOrg string, ghRepo *github.Repository, p
 	text := fmt.Sprintf("**Bitbucket PR created on %s by %s**\n\n%s", pr.CreatedOn, pr.Author["display_name"].(string), pr.Summary.Raw)
 	title := "Bitbucket PR #" + strconv.Itoa(pr.ID) + ": " + pr.Title
 	issue := &github.IssueRequest{
-		Title: &title,
-		Body:  &text,
+		Title:  &title,
+		Body:   &text,
+		Labels: &[]string{"bitbucketPR"},
 	}
 	if dryRun {
 		return
