@@ -105,6 +105,7 @@ func createPrs(gh *github.Client, githubOrg string, ghRepo *github.Repository, p
 		Title:  &title,
 		Body:   &text,
 		Labels: &[]string{"bitbucketPR"},
+		State:  github.Ptr("closed"),
 	}
 	if dryRun {
 		return
@@ -122,6 +123,12 @@ func createPrs(gh *github.Client, githubOrg string, ghRepo *github.Repository, p
 	_, _, err = gh.Repositories.CreateComment(context.Background(), githubOrg, *ghRepo.Name, commitHash, comment)
 	if err != nil {
 		log.Fatalf("failed to comment on commit %s: %s", commitHash, err)
+	}
+
+	// we can't create a closed issue directly so we have to edit the issue to close it
+	_, _, err = gh.Issues.Edit(context.Background(), githubOrg, *ghRepo.Name, *issueResponse.Number, issue)
+	if err != nil {
+		log.Fatalf("failed to close issue %s: %s", *issueResponse.URL, err)
 	}
 }
 
