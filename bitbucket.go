@@ -1,11 +1,13 @@
 package main
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
+	"slices"
 
 	"github.com/ktrysmt/go-bitbucket"
 	"github.com/mitchellh/mapstructure"
@@ -60,7 +62,9 @@ func getPrs(bb *bitbucket.Client, owner string, repo string, destinationBranch s
 	if err != nil {
 		panic(fmt.Sprintf("error decoding PRs: %s", err))
 	}
-	//spew.Dump(prs.Values[1].Author["nickname"])
+	slices.SortFunc(prs.Values, func(i PullRequest, j PullRequest) int {
+		return cmp.Compare(i.ID, j.ID)
+	})
 	return prs
 }
 
