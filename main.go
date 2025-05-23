@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -14,12 +13,6 @@ import (
 )
 
 func main() {
-	var repoListFile string
-	var dryRun bool
-	flag.StringVar(&repoListFile, "file", "", "List of repositories to migrate with one repo url on each line")
-	flag.BoolVar(&dryRun, "dryRun", false, "Whether to do a dry run or not")
-	flag.Parse()
-
 	err := godotenv.Load(".env")
 	if err != nil {
 		log.Fatalf("Error loading .env file")
@@ -30,7 +23,9 @@ func main() {
 	bbPassword := os.Getenv("BITBUCKET_TOKEN")
 	ghOrg := os.Getenv("GITHUB_ORG")
 	ghToken := os.Getenv("GITHUB_TOKEN")
-	envVarDryRun := strings.ToLower(os.Getenv("GITHUB_DRYRUN"))
+	envVarDryRun := os.Getenv("GITHUB_DRYRUN")
+	repoFile := os.Getenv("REPO_FILE")
+	dryRun := false
 
 	if envVarDryRun != "" {
 		dryRun, err = strconv.ParseBool(envVarDryRun)
@@ -50,7 +45,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	repos := parseRepos(repoListFile)
+	repos := parseRepos(repoFile)
 
 	bitbucketClient := bitbucket.NewBasicAuth(bbUsername, bbPassword)
 	githubClient := github.NewClient(nil).WithAuthToken(ghToken)
@@ -58,18 +53,15 @@ func main() {
 	migrateRepos(githubClient, bitbucketClient, bbWorkspace, ghOrg, repos, dryRun)
 }
 
-func parseRepos(repoListFile string) []string {
+func parseRepos(repoFile string) []string {
 	var repos []string
-	if envVarRepos := os.Getenv("REPO_FILE"); envVarRepos != "" {
-		repoListFile = string(envVarRepos)
-	}
-	if repoListFile == "" {
-		fmt.Println("You must supply a list of repos to migrate")
+	if repoFile == "" {
+		fmt.Println("You must supply a list of names of repos to migrate in REPO_FILE")
 		os.Exit(2)
 	}
-	data, err := os.ReadFile(strings.TrimSpace(repoListFile))
+	data, err := os.ReadFile(strings.TrimSpace(repoFile))
 	if err != nil {
-		log.Fatalf("could not read file %s", repoListFile)
+		log.Fatalf("could not read file %s", repoFile)
 	}
 	repos = strings.Split(string(data), "\n")
 
