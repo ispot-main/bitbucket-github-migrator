@@ -97,23 +97,17 @@ func migrateRepos(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, g
 	}
 
 	for _, repo := range repoList {
-		if dryRun {
-			fmt.Println("Pretend migrating repo", repo)
-		} else {
-			fmt.Println("Migrating repo", repo)
-		}
 		migrateRepo(gh, bb, bbWorkspace, ghOrg, repo, dryRun)
 	}
 }
 
 func migrateRepo(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, ghOrg string, repoName string, dryRun bool) {
+	fmt.Println("Getting bitbucket settings & downloading ", repoName)
 	bbRepo := getRepo(bb, bbWorkspace, repoName)
 	repoFolder := cloneRepo(bbWorkspace, repoName)
 	prs := getPrs(bb, bbWorkspace, repoName, bbRepo.Mainbranch.Name)
 
-	if !dryRun {
-		fmt.Println("mock migrating repo to Github...")
-	}
+	fmt.Println("Migrating to Github")
 	ghRepo := createRepo(gh, ghOrg, bbRepo, dryRun)
 	pushRepoToGithub(ghOrg, repoFolder, *ghRepo.Name, dryRun)
 	// defaultBranch gets overwritten when we git push for some reason
@@ -121,10 +115,6 @@ func migrateRepo(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, gh
 	// Also useful if repo is already created in Github and we want to update with latest repo settings from bitbucket
 	updateRepo(gh, ghOrg, ghRepo, dryRun)
 	updateRepoTopics(gh, ghOrg, ghRepo, dryRun)
-	if dryRun {
-		fmt.Println("mock migrating prs: ", prs.Values[0].Title)
-	} else {
-		createPrs(gh, ghOrg, ghRepo, prs, dryRun)
-	}
+	createPrs(gh, ghOrg, ghRepo, prs, dryRun)
 	fmt.Println("done migrating repo")
 }
