@@ -1,6 +1,9 @@
 *.code-workspace
 personal
 
+# built binary
+btg
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
