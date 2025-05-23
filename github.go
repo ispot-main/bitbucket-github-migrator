@@ -100,6 +100,8 @@ func updateRepo(gh *github.Client, githubOrg string, ghRepo *github.Repository, 
 func createPrs(gh *github.Client, githubOrg string, ghRepo *github.Repository, prs *PullRequests, dryRun bool) {
 	pr := prs.Values[0]
 	text := fmt.Sprintf("**Bitbucket PR created on %s by %s**\n\n%s", pr.CreatedOn, pr.Author["display_name"].(string), pr.Summary.Raw)
+	text = strings.ReplaceAll(text, "{: data-inline-card='' }", "")
+	text = strings.ReplaceAll(text, "\u200c", "") // weird non-printing char, ignore
 	title := "Bitbucket PR #" + strconv.Itoa(pr.ID) + ": " + pr.Title
 	issue := &github.IssueRequest{
 		Title:  &title,
