@@ -20,7 +20,7 @@ func getRepo(bb *bitbucket.Client, owner string, repoName string) *bitbucket.Rep
 	}
 	repo, err := bb.Repositories.Repository.Get(ro)
 	if err != nil {
-		fmt.Printf("Failed to get repo from bitbucket")
+		fmt.Printf("Failed to get repo from bitbucket!!!! oh no!!!! aaahhhhh!!!! help!")
 		panic(err)
 	}
 	return repo
