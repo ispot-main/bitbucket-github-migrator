@@ -23,17 +23,9 @@ func main() {
 	bbPassword := os.Getenv("BITBUCKET_TOKEN")
 	ghOrg := os.Getenv("GITHUB_ORG")
 	ghToken := os.Getenv("GITHUB_TOKEN")
-	envVarDryRun := os.Getenv("GITHUB_DRYRUN")
+	dryRun := getEnvVarAsBool("GITHUB_DRYRUN")
+	overwrite := getEnvVarAsBool("GITHUB_OVERWRITE")
 	repoFile := os.Getenv("REPO_FILE")
-	dryRun := false
-
-	if envVarDryRun != "" {
-		dryRun, err = strconv.ParseBool(envVarDryRun)
-		if err != nil {
-			fmt.Println("could not parse bool env var GITHUB_DRYRUN")
-			os.Exit(2)
-		}
-	}
 
 	if bbWorkspace == "" || bbUsername == "" || bbPassword == "" {
 		fmt.Println("BITBUCKET_WORKSPACE or BITBUCKET_USER or BITBUCKET_TOKEN not set in .env file or env vars")
@@ -50,7 +42,16 @@ func main() {
 	bitbucketClient := bitbucket.NewBasicAuth(bbUsername, bbPassword)
 	githubClient := github.NewClient(nil).WithAuthToken(ghToken)
 
-	migrateRepos(githubClient, bitbucketClient, bbWorkspace, ghOrg, repos, dryRun)
+	migrateRepos(githubClient, bitbucketClient, bbWorkspace, ghOrg, repos, dryRun, overwrite)
+}
+
+func getEnvVarAsBool(envVar string) bool {
+	result, err := strconv.ParseBool(os.Getenv(envVar))
+	if err != nil {
+		fmt.Println("could not parse bool env var ", envVar)
+		os.Exit(2)
+	}
+	return result
 }
 
 func parseRepos(repoFile string) []string {
@@ -83,24 +84,24 @@ func parseRepos(repoFile string) []string {
 	return cleaned_repos
 }
 
-func migrateRepos(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, ghOrg string, repoList []string, dryRun bool) {
+func migrateRepos(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, ghOrg string, repoList []string, dryRun bool, overwrite bool) {
 	if dryRun {
 		fmt.Println("Dry Run - not actually migrating anything")
 	}
 
 	for _, repo := range repoList {
-		migrateRepo(gh, bb, bbWorkspace, ghOrg, repo, dryRun)
+		migrateRepo(gh, bb, bbWorkspace, ghOrg, repo, dryRun, overwrite)
 	}
 }
 
-func migrateRepo(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, ghOrg string, repoName string, dryRun bool) {
+func migrateRepo(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, ghOrg string, repoName string, dryRun bool, overwrite bool) {
 	fmt.Println("Getting bitbucket settings & downloading ", repoName)
 	bbRepo := getRepo(bb, bbWorkspace, repoName)
 	repoFolder := cloneRepo(bbWorkspace, repoName)
 	prs := getPrs(bb, bbWorkspace, repoName, bbRepo.Mainbranch.Name)
 
 	fmt.Println("Migrating to Github")
-	ghRepo := createRepo(gh, ghOrg, bbRepo, dryRun)
+	ghRepo := createRepo(gh, ghOrg, bbRepo, dryRun, overwrite)
 	pushRepoToGithub(ghOrg, repoFolder, *ghRepo.Name, dryRun)
 	// defaultBranch gets overwritten when we git push for some reason
 	// we call updateRepo to switch it back

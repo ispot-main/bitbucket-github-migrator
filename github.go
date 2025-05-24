@@ -18,7 +18,7 @@ func cleanTopic(input string) string {
 	return strings.ReplaceAll(strings.ToLower(input), " ", "-")
 }
 
-func createRepo(gh *github.Client, githubOrg string, repo *bitbucket.Repository, dryRun bool) *github.Repository {
+func createRepo(gh *github.Client, githubOrg string, repo *bitbucket.Repository, dryRun bool, overwrite bool) *github.Repository {
 	ghRepo := &github.Repository{
 		Name:          github.Ptr(repo.Slug),
 		Private:       github.Ptr(repo.Is_private),
@@ -41,9 +41,9 @@ func createRepo(gh *github.Client, githubOrg string, repo *bitbucket.Repository,
 	_, _, err := gh.Repositories.Create(context.Background(), githubOrg, ghRepo)
 	if err != nil {
 		if strings.Contains(err.Error(), "name already exists on this account") {
-			// it's fine if a repo already exists
-			// if it's not just a earlier version of the repo we are migrating the git push will fail
-			repoCreated = true
+			if !overwrite {
+				log.Fatalf("Refusing to overwrite Github repo %s", repo.Slug)
+			}
 		} else {
 			log.Fatalf("failed to create repo %s, error: %s", repo.Slug, err)
 		}
