@@ -102,7 +102,7 @@ func createPrs(gh *github.Client, githubOrg string, ghRepo *github.Repository, p
 	text := fmt.Sprintf("**Bitbucket PR created on %s by %s**\n\n%s", pr.CreatedOn, pr.Author["display_name"].(string), pr.Summary.Raw)
 	text = strings.ReplaceAll(text, "{: data-inline-card='' }", "")
 	text = strings.ReplaceAll(text, "\u200c", "") // weird non-printing char, ignore
-	title := "Bitbucket PR #" + strconv.Itoa(pr.ID) + ": " + pr.Title
+	title := "Historical Bitbucket PR #" + strconv.Itoa(pr.ID) + ": " + pr.Title
 	issue := &github.IssueRequest{
 		Title:  &title,
 		Body:   &text,
