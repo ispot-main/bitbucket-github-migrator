@@ -98,39 +98,42 @@ func updateRepo(gh *github.Client, githubOrg string, ghRepo *github.Repository, 
 
 // create pull requests
 func createPrs(gh *github.Client, githubOrg string, ghRepo *github.Repository, prs *PullRequests, dryRun bool) {
-	pr := prs.Values[0]
-	text := fmt.Sprintf("**Bitbucket PR created on %s by %s**\n\n%s", pr.CreatedOn, pr.Author["display_name"].(string), pr.Summary.Raw)
-	text = strings.ReplaceAll(text, "{: data-inline-card='' }", "")
-	text = strings.ReplaceAll(text, "\u200c", "") // weird non-printing char, ignore
-	title := "Historical Bitbucket PR #" + strconv.Itoa(pr.ID) + ": " + pr.Title
-	issue := &github.IssueRequest{
-		Title:  &title,
-		Body:   &text,
-		Labels: &[]string{"bitbucketPR"},
-		State:  github.Ptr("closed"),
-	}
-	if dryRun {
-		return
-	}
-	fmt.Printf("Updating issue for PR %s\n", strconv.Itoa(pr.ID))
-	issueResponse, _, err := gh.Issues.Create(context.Background(), githubOrg, *ghRepo.Name, issue)
-	if err != nil {
-		log.Fatalf("failed to create issue for PR %s, error: %s", strconv.Itoa(pr.ID), err)
-	}
+	for _, pr := range prs.Values {
+		text := fmt.Sprintf("**Bitbucket PR created on %s by %s**\n\n%s", pr.CreatedOn, pr.Author["display_name"].(string), pr.Summary.Raw)
+		text = strings.ReplaceAll(text, "{: data-inline-card='' }", "")
+		text = strings.ReplaceAll(text, "\u200c", "") // weird non-printing char, ignore
+		title := "Historical Bitbucket PR #" + strconv.Itoa(pr.ID) + ": " + pr.Title
+		issue := &github.IssueRequest{
+			Title:  &title,
+			Body:   &text,
+			Labels: &[]string{"bitbucketPR"},
+			State:  github.Ptr("closed"),
+		}
+		if dryRun {
+			return
+		}
+		fmt.Printf("Updating issue for PR %s\n", strconv.Itoa(pr.ID))
+		issueResponse, _, err := gh.Issues.Create(context.Background(), githubOrg, *ghRepo.Name, issue)
+		if err != nil {
+			log.Fatalf("failed to create issue for PR %s, error: %s", strconv.Itoa(pr.ID), err)
+		}
 
-	commitHash := pr.MergeCommit.Hash
-	comment := &github.RepositoryComment{
-		Body: github.Ptr("Bitbucket PR details: #" + strconv.Itoa(*issueResponse.Number)),
-	}
-	_, _, err = gh.Repositories.CreateComment(context.Background(), githubOrg, *ghRepo.Name, commitHash, comment)
-	if err != nil {
-		log.Fatalf("failed to comment on commit %s: %s", commitHash, err)
-	}
+		commitHash := pr.MergeCommit.Hash
+		comment := &github.RepositoryComment{
+			Body: github.Ptr("Bitbucket PR details: #" + strconv.Itoa(*issueResponse.Number)),
+		}
+		_, _, err = gh.Repositories.CreateComment(context.Background(), githubOrg, *ghRepo.Name, commitHash, comment)
+		if err != nil {
+			log.Fatalf("failed to comment on commit %s: %s", commitHash, err)
+		}
 
-	// we can't create a closed issue directly so we have to edit the issue to close it
-	_, _, err = gh.Issues.Edit(context.Background(), githubOrg, *ghRepo.Name, *issueResponse.Number, issue)
-	if err != nil {
-		log.Fatalf("failed to close issue %s: %s", *issueResponse.URL, err)
+		// we can't create a closed issue directly so we have to edit the issue to close it
+		_, _, err = gh.Issues.Edit(context.Background(), githubOrg, *ghRepo.Name, *issueResponse.Number, issue)
+		if err != nil {
+			log.Fatalf("failed to close issue %s: %s", *issueResponse.URL, err)
+		}
+		// todo: remove this, just doing one for speed
+		break
 	}
 }
 
