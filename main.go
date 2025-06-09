@@ -70,6 +70,10 @@ func parseRepos(repoFile string) []string {
 	for _, repo := range repos {
 		repo = strings.TrimSpace(repo)
 		if repo != "" {
+			// ignore commented out repos
+			if repo[0] == "#"[0] {
+				continue
+			}
 			// bitbucket replaces invalid chars with -
 			// see https://support.atlassian.com/bitbucket-cloud/kb/what-is-a-repository-slug/
 			repo = strings.ReplaceAll(repo, " ", "-")
