@@ -110,7 +110,7 @@ func migrateOpenPrs(gh *github.Client, githubOrg string, ghRepo *github.Reposito
 			continue
 		}
 		prSummary := cleanBitbucketPRSummary(pr.Summary.Raw)
-		text := fmt.Sprintf("PR originally created by %s. Migrated from bitbucket on %s\n\n---\n%s", pr.Author["display_name"].(string), time.Now(), prSummary)
+		text := fmt.Sprintf("PR originally created by %s on %s. Migrated from bitbucket on %s\n\n---\n%s", pr.Author["display_name"].(string), pr.CreatedOn, time.Now().Format(time.RFC3339Nano), prSummary)
 		title := "Historical Bitbucket PR #" + strconv.Itoa(pr.ID) + ": " + pr.Title
 		branch := pr.Source["branch"].(map[string]any)["name"].(string)
 		gh_pr := &github.NewPullRequest{
@@ -126,7 +126,11 @@ func migrateOpenPrs(gh *github.Client, githubOrg string, ghRepo *github.Reposito
 		fmt.Printf("Updating PR %s\n", strconv.Itoa(pr.ID))
 		_, _, err := gh.PullRequests.Create(context.Background(), githubOrg, *ghRepo.Name, gh_pr)
 		if err != nil {
-			log.Fatalf("failed to create PR %s, error: %s", strconv.Itoa(pr.ID), err)
+			if strings.Contains(err.Error(), "A pull request already exists") {
+				fmt.Printf("Skipping PR creation for PR %s, PR already exists\n", strconv.Itoa(pr.ID))
+			} else {
+				log.Fatalf("failed to create PR %s, error: %s", strconv.Itoa(pr.ID), err)
+			}
 		}
 	}
 }
