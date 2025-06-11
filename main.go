@@ -112,6 +112,7 @@ func migrateRepo(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, gh
 	// Also useful if repo is already created in Github and we want to update with latest repo settings from bitbucket
 	updateRepo(gh, ghOrg, ghRepo, dryRun)
 	updateRepoTopics(gh, ghOrg, ghRepo, dryRun)
-	createPrs(gh, ghOrg, ghRepo, prs, dryRun)
+	migrateOpenPrs(gh, ghOrg, ghRepo, prs, dryRun)
+	createClosedPrs(gh, ghOrg, ghRepo, prs, dryRun)
 	fmt.Println("done migrating repo")
 }
