@@ -96,12 +96,54 @@ func updateRepo(gh *github.Client, githubOrg string, ghRepo *github.Repository, 
 	}
 }
 
-// create pull requests
-func createPrs(gh *github.Client, githubOrg string, ghRepo *github.Repository, prs *PullRequests, dryRun bool) {
+// cleans pr summary to nicely display in Github
+func cleanBitbucketPRSummary(prSummary string) string {
+	prSummary = strings.ReplaceAll(prSummary, "{: data-inline-card='' }", "")
+	prSummary = strings.ReplaceAll(prSummary, "\u200c", "") // weird non-printing char, ignore
+	return prSummary
+}
+
+// migrate open pull requests
+func migrateOpenPrs(gh *github.Client, githubOrg string, ghRepo *github.Repository, prs *PullRequests, dryRun bool) {
 	for _, pr := range prs.Values {
-		text := fmt.Sprintf("**Bitbucket PR created on %s by %s**\n\n%s", pr.CreatedOn, pr.Author["display_name"].(string), pr.Summary.Raw)
-		text = strings.ReplaceAll(text, "{: data-inline-card='' }", "")
-		text = strings.ReplaceAll(text, "\u200c", "") // weird non-printing char, ignore
+		if pr.State != "OPEN" {
+			continue
+		}
+		prSummary := cleanBitbucketPRSummary(pr.Summary.Raw)
+		text := fmt.Sprintf("PR originally created by %s on %s. Migrated from bitbucket on %s\n\n---\n%s", pr.Author["display_name"].(string), pr.CreatedOn, time.Now().Format(time.RFC3339Nano), prSummary)
+		title := "Historical Bitbucket PR #" + strconv.Itoa(pr.ID) + ": " + pr.Title
+		branch := pr.Source["branch"].(map[string]any)["name"].(string)
+		gh_pr := &github.NewPullRequest{
+			Title: &title,
+			Body:  &text,
+			Head:  &branch,
+			Base:  ghRepo.DefaultBranch,
+			Draft: &pr.Draft,
+		}
+		if dryRun {
+			return
+		}
+		fmt.Printf("Updating PR %s\n", strconv.Itoa(pr.ID))
+		_, _, err := gh.PullRequests.Create(context.Background(), githubOrg, *ghRepo.Name, gh_pr)
+		if err != nil {
+			if strings.Contains(err.Error(), "A pull request already exists") {
+				fmt.Printf("Skipping PR creation for PR %s, PR already exists\n", strconv.Itoa(pr.ID))
+			} else {
+				log.Fatalf("failed to create PR %s, error: %s", strconv.Itoa(pr.ID), err)
+			}
+		}
+	}
+}
+
+// create pull requests
+func createClosedPrs(gh *github.Client, githubOrg string, ghRepo *github.Repository, prs *PullRequests, dryRun bool) {
+	for _, pr := range prs.Values {
+		if pr.State != "MERGED" {
+			continue
+		}
+
+		prSummary := cleanBitbucketPRSummary(pr.Summary.Raw)
+		text := fmt.Sprintf("**Bitbucket PR created on %s by %s**\n\n%s", pr.CreatedOn, pr.Author["display_name"].(string), prSummary)
 		title := "Historical Bitbucket PR #" + strconv.Itoa(pr.ID) + ": " + pr.Title
 		issue := &github.IssueRequest{
 			Title:  &title,
