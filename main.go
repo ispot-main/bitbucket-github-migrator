@@ -26,6 +26,10 @@ func main() {
 	dryRun := getEnvVarAsBool("GITHUB_DRYRUN")
 	overwrite := getEnvVarAsBool("GITHUB_OVERWRITE")
 	repoFile := os.Getenv("REPO_FILE")
+	migrateRepoContents := getEnvVarAsBool("MIGRATE_REPO_CONTENTS")
+	migrateRepoSettings := getEnvVarAsBool("MIGRATE_REPO_SETTINGS")
+	migrateOpenPrs := getEnvVarAsBool("MIGRATE_OPEN_PRS")
+	migrateClosedPrs := getEnvVarAsBool("MIGRATE_CLOSED_PRS")
 
 	if bbWorkspace == "" || bbUsername == "" || bbPassword == "" {
 		fmt.Println("BITBUCKET_WORKSPACE or BITBUCKET_USER or BITBUCKET_TOKEN not set in .env file or env vars")
