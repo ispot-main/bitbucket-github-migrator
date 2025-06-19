@@ -123,15 +123,21 @@ func migrateOpenPrs(gh *github.Client, githubOrg string, ghRepo *github.Reposito
 		if dryRun {
 			return
 		}
-		fmt.Printf("Updating PR %s\n", strconv.Itoa(pr.ID))
-		_, _, err := gh.PullRequests.Create(context.Background(), githubOrg, *ghRepo.Name, gh_pr)
+		newPr, _, err := gh.PullRequests.Create(context.Background(), githubOrg, *ghRepo.Name, gh_pr)
 		if err != nil {
 			if strings.Contains(err.Error(), "A pull request already exists") {
 				fmt.Printf("Skipping PR creation for PR %s, PR already exists\n", strconv.Itoa(pr.ID))
+				// sleep for .5s to help avoid github rate limit
+				time.Sleep(time.Millisecond * 500)
+				continue
 			} else {
 				log.Fatalf("failed to create PR %s, error: %s", strconv.Itoa(pr.ID), err)
 			}
 		}
+		fmt.Printf("Migrated PR %s as %s\n", strconv.Itoa(pr.ID), strconv.Itoa(*newPr.Number))
+
+		// sleep for .5s to help avoid github rate limit
+		time.Sleep(time.Millisecond * 500)
 	}
 }
 
@@ -174,8 +180,8 @@ func createClosedPrs(gh *github.Client, githubOrg string, ghRepo *github.Reposit
 		if err != nil {
 			log.Fatalf("failed to close issue %s: %s", *issueResponse.URL, err)
 		}
-		// todo: remove this, just doing one for speed
-		break
+		// sleep for .5s to help avoid github rate limit
+		time.Sleep(time.Millisecond * 500)
 	}
 }
 
