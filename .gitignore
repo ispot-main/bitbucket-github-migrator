@@ -1,5 +1,6 @@
 *.code-workspace
 personal
+__debug_bin*
 
 # built binary
 btg
