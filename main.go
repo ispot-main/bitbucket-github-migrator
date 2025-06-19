@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/v72/github"
 	"github.com/joho/godotenv"
@@ -156,4 +157,7 @@ func migrateRepo(gh *github.Client, bb *bitbucket.Client, repoName string, confi
 	}
 	fmt.Println("done migrating repo")
 	fmt.Println()
+
+	// sleep for .5s to help avoid github rate limit
+	time.Sleep(time.Millisecond * 500)
 }
