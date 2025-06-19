@@ -51,7 +51,7 @@ func getPrs(bb *bitbucket.Client, owner string, repo string, destinationBranch s
 		Owner:             owner,
 		RepoSlug:          repo,
 		DestinationBranch: destinationBranch,
-		States:            []string{"MERGED", "OPEN"},
+		Query:             "state IN (\"MERGED\", \"OPEN\")",
 	}
 	fmt.Println("getting prs for", repo)
 	response, err := bb.Repositories.PullRequests.Gets(opt)
