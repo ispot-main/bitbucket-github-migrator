@@ -120,7 +120,7 @@ func migrateRepos(gh *github.Client, bb *bitbucket.Client, repoList []string, co
 }
 
 func migrateRepo(gh *github.Client, bb *bitbucket.Client, repoName string, config settings) {
-	fmt.Println("Getting bitbucket settings & downloading ", repoName)
+	fmt.Println("Getting bitbucket settings & downloading", repoName)
 	bbRepo := getRepo(bb, config.bbWorkspace, repoName)
 	repoFolder := cloneRepo(config.bbWorkspace, repoName)
 	prs := getPrs(bb, config.bbWorkspace, repoName, bbRepo.Mainbranch.Name)

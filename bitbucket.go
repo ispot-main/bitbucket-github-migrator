@@ -52,7 +52,7 @@ func getPrs(bb *bitbucket.Client, owner string, repo string, destinationBranch s
 		RepoSlug:          repo,
 		DestinationBranch: destinationBranch,
 	}
-	fmt.Println("getting prs for ", repo)
+	fmt.Println("getting prs for", repo)
 	response, err := bb.Repositories.PullRequests.Gets(opt)
 	if err != nil {
 		panic(err)
