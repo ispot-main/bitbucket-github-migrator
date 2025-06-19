@@ -18,7 +18,7 @@ func cleanTopic(input string) string {
 	return strings.ReplaceAll(strings.ToLower(input), " ", "-")
 }
 
-func createRepo(gh *github.Client, githubOrg string, repo *bitbucket.Repository, dryRun bool, overwrite bool) *github.Repository {
+func createRepo(gh *github.Client, repo *bitbucket.Repository, config settings) *github.Repository {
 	ghRepo := &github.Repository{
 		Name:          github.Ptr(repo.Slug),
 		Private:       github.Ptr(repo.Is_private),
@@ -26,22 +26,22 @@ func createRepo(gh *github.Client, githubOrg string, repo *bitbucket.Repository,
 		DefaultBranch: github.Ptr(repo.Mainbranch.Name),
 		Language:      github.Ptr(repo.Language),
 		Organization: &github.Organization{
-			Name: github.Ptr(githubOrg),
+			Name: github.Ptr(config.ghOrg),
 		},
 		Topics: []string{"migratedFromBitbucket", cleanTopic(repo.Project.Name)},
 	}
 
-	if dryRun {
+	if config.dryRun {
 		return ghRepo
 	}
 
 	// todo bitbucket project as custom property?
-	fmt.Printf("Creating repo %s/%s", githubOrg, repo.Slug)
+	fmt.Printf("Creating repo %s/%s", config.ghOrg, repo.Slug)
 	repoCreated := false
-	_, _, err := gh.Repositories.Create(context.Background(), githubOrg, ghRepo)
+	_, _, err := gh.Repositories.Create(context.Background(), config.ghOrg, ghRepo)
 	if err != nil {
 		if strings.Contains(err.Error(), "name already exists on this account") {
-			if !overwrite {
+			if !config.overwrite {
 				log.Fatalf("Refusing to overwrite Github repo %s", repo.Slug)
 			}
 		} else {
@@ -57,7 +57,7 @@ func createRepo(gh *github.Client, githubOrg string, repo *bitbucket.Repository,
 	// Wait for the repository to be available
 	for i := 0; i < 20; i++ {
 		time.Sleep(200 * time.Millisecond)
-		response, _, _ := gh.Repositories.Get(context.Background(), githubOrg, repo.Slug)
+		response, _, _ := gh.Repositories.Get(context.Background(), config.ghOrg, repo.Slug)
 		if response != nil {
 			log.Print("Repo has been created!")
 			return ghRepo
