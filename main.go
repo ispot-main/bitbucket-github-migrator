@@ -149,4 +149,5 @@ func migrateRepo(gh *github.Client, bb *bitbucket.Client, repoName string, confi
 		fmt.Println("Skipping closed PR's")
 	}
 	fmt.Println("done migrating repo")
+	fmt.Println()
 }
