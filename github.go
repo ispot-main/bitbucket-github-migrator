@@ -134,7 +134,7 @@ func migrateOpenPrs(gh *github.Client, githubOrg string, ghRepo *github.Reposito
 				log.Fatalf("failed to create PR %s, error: %s", strconv.Itoa(pr.ID), err)
 			}
 		}
-		fmt.Printf("Migrated PR %s as %s\n", strconv.Itoa(pr.ID), strconv.Itoa(*newPr.Number))
+		fmt.Printf("Migrated BB PR %s as GH PR %s\n", strconv.Itoa(pr.ID), strconv.Itoa(*newPr.Number))
 
 		// sleep for .5s to help avoid github rate limit
 		time.Sleep(time.Millisecond * 500)
