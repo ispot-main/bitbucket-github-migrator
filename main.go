@@ -123,7 +123,10 @@ func migrateRepo(gh *github.Client, bb *bitbucket.Client, repoName string, confi
 	fmt.Println("Getting bitbucket settings & downloading", repoName)
 	bbRepo := getRepo(bb, config.bbWorkspace, repoName)
 	repoFolder := cloneRepo(config.bbWorkspace, repoName)
-	prs := getPrs(bb, config.bbWorkspace, repoName, bbRepo.Mainbranch.Name)
+	var prs *PullRequests
+	if config.migrateOpenPrs || config.migrateClosedPrs {
+		prs = getPrs(bb, config.bbWorkspace, repoName, bbRepo.Mainbranch.Name)
+	}
 
 	fmt.Println("Migrating to Github")
 	ghRepo := createRepo(gh, bbRepo, config)
