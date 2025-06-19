@@ -149,7 +149,7 @@ func createClosedPrs(gh *github.Client, githubOrg string, ghRepo *github.Reposit
 		}
 
 		prSummary := cleanBitbucketPRSummary(pr.Summary.Raw)
-		text := fmt.Sprintf("**Bitbucket PR created on %s by %s**\n\n%s", pr.CreatedOn, pr.Author["display_name"].(string), prSummary)
+		text := fmt.Sprintf("**Bitbucket PR created on %s by %s**\n\n---\n%s", pr.CreatedOn, pr.Author["display_name"].(string), prSummary)
 		title := "Historical Bitbucket PR #" + strconv.Itoa(pr.ID) + ": " + pr.Title
 		issue := &github.IssueRequest{
 			Title:  &title,
