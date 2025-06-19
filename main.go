@@ -127,13 +127,21 @@ func migrateRepo(gh *github.Client, bb *bitbucket.Client, repoName string, confi
 
 	fmt.Println("Migrating to Github")
 	ghRepo := createRepo(gh, bbRepo, config)
-	pushRepoToGithub(config.ghOrg, repoFolder, *ghRepo.Name, config.dryRun)
+	if config.migrateRepoContents {
+		pushRepoToGithub(config.ghOrg, repoFolder, *ghRepo.Name, config.dryRun)
+	}
 	// defaultBranch gets overwritten when we git push for some reason
 	// we call updateRepo to switch it back
 	// Also useful if repo is already created in Github and we want to update with latest repo settings from bitbucket
-	updateRepo(gh, config.ghOrg, ghRepo, config.dryRun)
-	updateRepoTopics(gh, config.ghOrg, ghRepo, config.dryRun)
-	migrateOpenPrs(gh, config.ghOrg, ghRepo, prs, config.dryRun)
-	createClosedPrs(gh, config.ghOrg, ghRepo, prs, config.dryRun)
+	if config.migrateRepoSettings {
+		updateRepo(gh, config.ghOrg, ghRepo, config.dryRun)
+		updateRepoTopics(gh, config.ghOrg, ghRepo, config.dryRun)
+	}
+	if config.migrateOpenPrs {
+		migrateOpenPrs(gh, config.ghOrg, ghRepo, prs, config.dryRun)
+	}
+	if config.migrateClosedPrs {
+		createClosedPrs(gh, config.ghOrg, ghRepo, prs, config.dryRun)
+	}
 	fmt.Println("done migrating repo")
 }
