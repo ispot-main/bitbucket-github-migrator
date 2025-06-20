@@ -6,11 +6,27 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/v72/github"
 	"github.com/joho/godotenv"
 	"github.com/ktrysmt/go-bitbucket"
 )
+
+type settings struct {
+	bbWorkspace         string
+	bbUsername          string
+	bbPassword          string
+	ghOrg               string
+	ghToken             string
+	dryRun              bool
+	overwrite           bool
+	repoFile            string
+	migrateRepoContents bool
+	migrateRepoSettings bool
+	migrateOpenPrs      bool
+	migrateClosedPrs    bool
+}
 
 func main() {
 	err := godotenv.Load(".env")
@@ -18,31 +34,37 @@ func main() {
 		log.Fatalf("Error loading .env file")
 	}
 
-	bbWorkspace := os.Getenv("BITBUCKET_WORKSPACE")
-	bbUsername := os.Getenv("BITBUCKET_USER")
-	bbPassword := os.Getenv("BITBUCKET_TOKEN")
-	ghOrg := os.Getenv("GITHUB_ORG")
-	ghToken := os.Getenv("GITHUB_TOKEN")
-	dryRun := getEnvVarAsBool("GITHUB_DRYRUN")
-	overwrite := getEnvVarAsBool("GITHUB_OVERWRITE")
-	repoFile := os.Getenv("REPO_FILE")
+	config := settings{
+		bbWorkspace:         os.Getenv("BITBUCKET_WORKSPACE"),
+		bbUsername:          os.Getenv("BITBUCKET_USER"),
+		bbPassword:          os.Getenv("BITBUCKET_TOKEN"),
+		ghOrg:               os.Getenv("GITHUB_ORG"),
+		ghToken:             os.Getenv("GITHUB_TOKEN"),
+		dryRun:              getEnvVarAsBool("GITHUB_DRYRUN"),
+		overwrite:           getEnvVarAsBool("GITHUB_OVERWRITE"),
+		repoFile:            os.Getenv("REPO_FILE"),
+		migrateRepoContents: getEnvVarAsBool("MIGRATE_REPO_CONTENTS"),
+		migrateRepoSettings: getEnvVarAsBool("MIGRATE_REPO_SETTINGS"),
+		migrateOpenPrs:      getEnvVarAsBool("MIGRATE_OPEN_PRS"),
+		migrateClosedPrs:    getEnvVarAsBool("MIGRATE_CLOSED_PRS"),
+	}
 
-	if bbWorkspace == "" || bbUsername == "" || bbPassword == "" {
+	if config.bbWorkspace == "" || config.bbUsername == "" || config.bbPassword == "" {
 		fmt.Println("BITBUCKET_WORKSPACE or BITBUCKET_USER or BITBUCKET_TOKEN not set in .env file or env vars")
 		os.Exit(2)
 	}
 
-	if ghOrg == "" || ghToken == "" {
+	if config.ghOrg == "" || config.ghToken == "" {
 		fmt.Println("GITHUB_ORG or GITHUB_TOKEN not set in .env file or env vars")
 		os.Exit(2)
 	}
 
-	repos := parseRepos(repoFile)
+	repos := parseRepos(config.repoFile)
 
-	bitbucketClient := bitbucket.NewBasicAuth(bbUsername, bbPassword)
-	githubClient := github.NewClient(nil).WithAuthToken(ghToken)
+	bitbucketClient := bitbucket.NewBasicAuth(config.bbUsername, config.bbPassword)
+	githubClient := github.NewClient(nil).WithAuthToken(config.ghToken)
 
-	migrateRepos(githubClient, bitbucketClient, bbWorkspace, ghOrg, repos, dryRun, overwrite)
+	migrateRepos(githubClient, bitbucketClient, repos, config)
 }
 
 func getEnvVarAsBool(envVar string) bool {
@@ -88,31 +110,54 @@ func parseRepos(repoFile string) []string {
 	return cleaned_repos
 }
 
-func migrateRepos(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, ghOrg string, repoList []string, dryRun bool, overwrite bool) {
-	if dryRun {
+func migrateRepos(gh *github.Client, bb *bitbucket.Client, repoList []string, config settings) {
+	if config.dryRun {
 		fmt.Println("Dry Run - not actually migrating anything")
 	}
 
 	for _, repo := range repoList {
-		migrateRepo(gh, bb, bbWorkspace, ghOrg, repo, dryRun, overwrite)
+		migrateRepo(gh, bb, repo, config)
 	}
 }
 
-func migrateRepo(gh *github.Client, bb *bitbucket.Client, bbWorkspace string, ghOrg string, repoName string, dryRun bool, overwrite bool) {
-	fmt.Println("Getting bitbucket settings & downloading ", repoName)
-	bbRepo := getRepo(bb, bbWorkspace, repoName)
-	repoFolder := cloneRepo(bbWorkspace, repoName)
-	prs := getPrs(bb, bbWorkspace, repoName, bbRepo.Mainbranch.Name)
+func migrateRepo(gh *github.Client, bb *bitbucket.Client, repoName string, config settings) {
+	fmt.Println("Getting bitbucket settings & downloading", repoName)
+	bbRepo := getRepo(bb, config.bbWorkspace, repoName)
+	var repoFolder string
+	if config.migrateRepoContents {
+		repoFolder = cloneRepo(config.bbWorkspace, repoName)
+	}
+	var prs *PullRequests
+	if config.migrateOpenPrs || config.migrateClosedPrs {
+		prs = getPrs(bb, config.bbWorkspace, repoName, bbRepo.Mainbranch.Name)
+	}
 
 	fmt.Println("Migrating to Github")
-	ghRepo := createRepo(gh, ghOrg, bbRepo, dryRun, overwrite)
-	pushRepoToGithub(ghOrg, repoFolder, *ghRepo.Name, dryRun)
-	// defaultBranch gets overwritten when we git push for some reason
-	// we call updateRepo to switch it back
-	// Also useful if repo is already created in Github and we want to update with latest repo settings from bitbucket
-	updateRepo(gh, ghOrg, ghRepo, dryRun)
-	updateRepoTopics(gh, ghOrg, ghRepo, dryRun)
-	migrateOpenPrs(gh, ghOrg, ghRepo, prs, dryRun)
-	createClosedPrs(gh, ghOrg, ghRepo, prs, dryRun)
+	ghRepo := createRepo(gh, bbRepo, config)
+	if config.migrateRepoContents {
+		pushRepoToGithub(config.ghOrg, repoFolder, *ghRepo.Name, config.dryRun)
+	} else {
+		fmt.Println("Skipping repo contents")
+	}
+	if config.migrateRepoSettings {
+		updateRepo(gh, config.ghOrg, ghRepo, config.dryRun)
+		updateRepoTopics(gh, config.ghOrg, ghRepo, config.dryRun)
+	} else {
+		fmt.Println("Skipping repo settings")
+	}
+	if config.migrateOpenPrs {
+		migrateOpenPrs(gh, config.ghOrg, ghRepo, prs, config.dryRun)
+	} else {
+		fmt.Println("Skipping open PR's")
+	}
+	if config.migrateClosedPrs {
+		createClosedPrs(gh, config.ghOrg, ghRepo, prs, config.dryRun)
+	} else {
+		fmt.Println("Skipping closed PR's")
+	}
 	fmt.Println("done migrating repo")
+	fmt.Println()
+
+	// sleep for .5s to help avoid github rate limit
+	time.Sleep(time.Millisecond * 500)
 }

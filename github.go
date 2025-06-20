@@ -18,7 +18,7 @@ func cleanTopic(input string) string {
 	return strings.ReplaceAll(strings.ToLower(input), " ", "-")
 }
 
-func createRepo(gh *github.Client, githubOrg string, repo *bitbucket.Repository, dryRun bool, overwrite bool) *github.Repository {
+func createRepo(gh *github.Client, repo *bitbucket.Repository, config settings) *github.Repository {
 	ghRepo := &github.Repository{
 		Name:          github.Ptr(repo.Slug),
 		Private:       github.Ptr(repo.Is_private),
@@ -26,22 +26,22 @@ func createRepo(gh *github.Client, githubOrg string, repo *bitbucket.Repository,
 		DefaultBranch: github.Ptr(repo.Mainbranch.Name),
 		Language:      github.Ptr(repo.Language),
 		Organization: &github.Organization{
-			Name: github.Ptr(githubOrg),
+			Name: github.Ptr(config.ghOrg),
 		},
 		Topics: []string{"migratedFromBitbucket", cleanTopic(repo.Project.Name)},
 	}
 
-	if dryRun {
+	if config.dryRun {
 		return ghRepo
 	}
 
 	// todo bitbucket project as custom property?
-	fmt.Printf("Creating repo %s/%s", githubOrg, repo.Slug)
+	fmt.Printf("Creating repo %s/%s", config.ghOrg, repo.Slug)
 	repoCreated := false
-	_, _, err := gh.Repositories.Create(context.Background(), githubOrg, ghRepo)
+	_, _, err := gh.Repositories.Create(context.Background(), config.ghOrg, ghRepo)
 	if err != nil {
 		if strings.Contains(err.Error(), "name already exists on this account") {
-			if !overwrite {
+			if !config.overwrite {
 				log.Fatalf("Refusing to overwrite Github repo %s", repo.Slug)
 			}
 		} else {
@@ -57,7 +57,7 @@ func createRepo(gh *github.Client, githubOrg string, repo *bitbucket.Repository,
 	// Wait for the repository to be available
 	for i := 0; i < 20; i++ {
 		time.Sleep(200 * time.Millisecond)
-		response, _, _ := gh.Repositories.Get(context.Background(), githubOrg, repo.Slug)
+		response, _, _ := gh.Repositories.Get(context.Background(), config.ghOrg, repo.Slug)
 		if response != nil {
 			log.Print("Repo has been created!")
 			return ghRepo
@@ -123,15 +123,21 @@ func migrateOpenPrs(gh *github.Client, githubOrg string, ghRepo *github.Reposito
 		if dryRun {
 			return
 		}
-		fmt.Printf("Updating PR %s\n", strconv.Itoa(pr.ID))
-		_, _, err := gh.PullRequests.Create(context.Background(), githubOrg, *ghRepo.Name, gh_pr)
+		newPr, _, err := gh.PullRequests.Create(context.Background(), githubOrg, *ghRepo.Name, gh_pr)
 		if err != nil {
 			if strings.Contains(err.Error(), "A pull request already exists") {
 				fmt.Printf("Skipping PR creation for PR %s, PR already exists\n", strconv.Itoa(pr.ID))
+				// sleep for .5s to help avoid github rate limit
+				time.Sleep(time.Millisecond * 500)
+				continue
 			} else {
 				log.Fatalf("failed to create PR %s, error: %s", strconv.Itoa(pr.ID), err)
 			}
 		}
+		fmt.Printf("Migrated BB PR %s as GH PR %s\n", strconv.Itoa(pr.ID), strconv.Itoa(*newPr.Number))
+
+		// sleep for .5s to help avoid github rate limit
+		time.Sleep(time.Millisecond * 500)
 	}
 }
 
@@ -143,7 +149,7 @@ func createClosedPrs(gh *github.Client, githubOrg string, ghRepo *github.Reposit
 		}
 
 		prSummary := cleanBitbucketPRSummary(pr.Summary.Raw)
-		text := fmt.Sprintf("**Bitbucket PR created on %s by %s**\n\n%s", pr.CreatedOn, pr.Author["display_name"].(string), prSummary)
+		text := fmt.Sprintf("**Bitbucket PR created on %s by %s**\n\n---\n%s", pr.CreatedOn, pr.Author["display_name"].(string), prSummary)
 		title := "Historical Bitbucket PR #" + strconv.Itoa(pr.ID) + ": " + pr.Title
 		issue := &github.IssueRequest{
 			Title:  &title,
@@ -174,8 +180,8 @@ func createClosedPrs(gh *github.Client, githubOrg string, ghRepo *github.Reposit
 		if err != nil {
 			log.Fatalf("failed to close issue %s: %s", *issueResponse.URL, err)
 		}
-		// todo: remove this, just doing one for speed
-		break
+		// sleep for .5s to help avoid github rate limit
+		time.Sleep(time.Millisecond * 500)
 	}
 }
 

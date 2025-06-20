@@ -23,9 +23,19 @@ GITHUB_ORG=YOUR_ORG_HERE
 # You can use a PAT of a user, but make sure the token owner is the org
 # The token MUST have write access to Administration, Contents, Issues, and Pull Requests
 GITHUB_TOKEN=CENSORED
+
 # whether overwriting existing github repo is allowed
 GITHUB_OVERWRITE=false
 GITHUB_DRYRUN=true
+
+MIGRATE_REPO_CONTENTS=true
+# it's suggested to migrate repo settings if you migrate repo contents
+# as migrating repo contents may reset default branch
+# and migrating repo settings will reset it back
+MIGRATE_REPO_SETTINGS=true
+MIGRATE_OPEN_PRS=true
+# MIGRATE_CLOSED_PRS not quite ready for usage yet
+MIGRATE_CLOSED_PRS=false
 
 REPO_FILE=repos.txt
 ```
