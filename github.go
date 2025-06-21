@@ -19,9 +19,15 @@ func cleanTopic(input string) string {
 }
 
 func createRepo(gh *github.Client, repo *bitbucket.Repository, config settings) *github.Repository {
+	var visibility string
+	if repo.Is_private {
+		visibility = config.visibility
+	} else {
+		visibility = "public"
+	}
 	ghRepo := &github.Repository{
 		Name:          github.Ptr(repo.Slug),
-		Private:       github.Ptr(repo.Is_private),
+		Visibility:    github.Ptr(visibility),
 		Description:   github.Ptr(repo.Description),
 		DefaultBranch: github.Ptr(repo.Mainbranch.Name),
 		Language:      github.Ptr(repo.Language),

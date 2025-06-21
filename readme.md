@@ -27,6 +27,9 @@ GITHUB_TOKEN=CENSORED
 # whether overwriting existing github repo is allowed
 GITHUB_OVERWRITE=false
 GITHUB_DRYRUN=true
+# if the bitbucket repo is private this visibility setting will be chosen
+# it can be either private or internal
+GITHUB_PRIVATE_VISIBILITY=internal
 
 MIGRATE_REPO_CONTENTS=true
 # it's suggested to migrate repo settings if you migrate repo contents

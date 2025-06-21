@@ -21,6 +21,7 @@ type settings struct {
 	ghToken             string
 	dryRun              bool
 	overwrite           bool
+	visibility          string
 	repoFile            string
 	migrateRepoContents bool
 	migrateRepoSettings bool
@@ -42,6 +43,7 @@ func main() {
 		ghToken:             os.Getenv("GITHUB_TOKEN"),
 		dryRun:              getEnvVarAsBool("GITHUB_DRYRUN"),
 		overwrite:           getEnvVarAsBool("GITHUB_OVERWRITE"),
+		visibility:          os.Getenv("GITHUB_PRIVATE_VISIBILITY"),
 		repoFile:            os.Getenv("REPO_FILE"),
 		migrateRepoContents: getEnvVarAsBool("MIGRATE_REPO_CONTENTS"),
 		migrateRepoSettings: getEnvVarAsBool("MIGRATE_REPO_SETTINGS"),
