@@ -191,20 +191,35 @@ func createClosedPrs(gh *github.Client, githubOrg string, ghRepo *github.Reposit
 	}
 }
 
+func runProgram(repoFolder string, program string) ([]byte, error) {
+	if program != "noop" {
+		cmd := exec.Command(program, repoFolder)
+		return cmd.CombinedOutput()
+	} else {
+		return []byte{}, nil
+	}
+}
+
 // pushes all repo branches&tags to Github with --mirror option.
 // default branch may get updated as a side-effect
-func pushRepoToGithub(githubOrg string, repoFolder string, repoName string, dryRun bool) {
+func pushRepoToGithub(repoFolder string, repoName string, config settings) {
 	const newOrigin string = "newOrigin"
 
-	cmd := exec.Command("git", "remote", "add", newOrigin, fmt.Sprintf("https://github.com/%s/%s.git", githubOrg, repoName))
+	cmd := exec.Command("git", "remote", "add", newOrigin, fmt.Sprintf("https://github.com/%s/%s.git", config.ghOrg, repoName))
 	cmd.Dir = repoFolder
 	output, err := cmd.CombinedOutput()
+	fmt.Println(string(output))
 	if err != nil {
 		log.Fatalf("Failed to add new git origin: %s\nOutput: %s", err, string(output))
 	}
-	fmt.Println(string(output))
 
-	if dryRun {
+	output, err = runProgram(repoFolder, config.runProgram)
+	fmt.Println(string(output))
+	if err != nil {
+		log.Fatalf("Failed to run custom program %s. err: %s", config.runProgram, err)
+	}
+
+	if config.dryRun {
 		return
 	}
 

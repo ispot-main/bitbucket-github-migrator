@@ -22,6 +22,7 @@ type settings struct {
 	dryRun              bool
 	overwrite           bool
 	visibility          string
+	runProgram          string
 	repoFile            string
 	migrateRepoContents bool
 	migrateRepoSettings bool
@@ -44,6 +45,7 @@ func main() {
 		dryRun:              getEnvVarAsBool("GITHUB_DRYRUN"),
 		overwrite:           getEnvVarAsBool("GITHUB_OVERWRITE"),
 		visibility:          os.Getenv("GITHUB_PRIVATE_VISIBILITY"),
+		runProgram:          os.Getenv("GITHUB_RUN_PROGRAM"),
 		repoFile:            os.Getenv("REPO_FILE"),
 		migrateRepoContents: getEnvVarAsBool("MIGRATE_REPO_CONTENTS"),
 		migrateRepoSettings: getEnvVarAsBool("MIGRATE_REPO_SETTINGS"),
@@ -137,7 +139,7 @@ func migrateRepo(gh *github.Client, bb *bitbucket.Client, repoName string, confi
 	fmt.Println("Migrating to Github")
 	ghRepo := createRepo(gh, bbRepo, config)
 	if config.migrateRepoContents {
-		pushRepoToGithub(config.ghOrg, repoFolder, *ghRepo.Name, config.dryRun)
+		pushRepoToGithub(repoFolder, repoName, config)
 	} else {
 		fmt.Println("Skipping repo contents")
 	}
