@@ -146,6 +146,7 @@ func migrateRepo(gh *github.Client, bb *bitbucket.Client, repoName string, confi
 	if config.migrateRepoSettings {
 		updateRepo(gh, config.ghOrg, ghRepo, config.dryRun)
 		updateRepoTopics(gh, config.ghOrg, ghRepo, config.dryRun)
+		updateCustomProperties(gh, config.ghOrg, ghRepo, config.dryRun, bbRepo.Project.Name)
 	} else {
 		fmt.Println("Skipping repo settings")
 	}

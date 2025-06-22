@@ -90,6 +90,23 @@ func updateRepoTopics(gh *github.Client, githubOrg string, ghRepo *github.Reposi
 	}
 }
 
+func updateCustomProperties(gh *github.Client, githubOrg string, ghRepo *github.Repository, dryRun bool, projectName string) {
+	customProps := []*github.CustomPropertyValue{
+		{
+			PropertyName: "bitbucket",
+			Value:        "true",
+		},
+		{
+			PropertyName: "project",
+			Value:        cleanTopic(projectName),
+		},
+	}
+	if dryRun {
+		return
+	}
+	gh.Repositories.CreateOrUpdateCustomProperties(context.Background(), githubOrg, *ghRepo.Name, customProps)
+}
+
 func updateRepo(gh *github.Client, githubOrg string, ghRepo *github.Repository, dryRun bool) {
 	if dryRun {
 		fmt.Println("Mock updating repo default branch")
