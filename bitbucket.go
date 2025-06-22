@@ -97,7 +97,12 @@ func createMigrationPR(bb *bitbucket.Client, owner string, repo string) {
 }
 
 func uploadFileToBranch(bb *bitbucket.Client, owner string, repo string, branch string, filename string, content []byte) error {
-	bb.HttpClient.Post("")
+	url := fmt.Sprintf("https://api.bitbucket.org/2.0/repositories/%s/%s/src", owner, repo)
+	//
+	req.SetBasicAuth(config.bbUsername, config.bbPassword)
+	//bb.HttpClient.Post(url, "???", "hello world")
+	// ^ above is equivalent of golng's default HTTPClient library
+	// might as well use golang directly then and skip bitbucket library then
 	urlStr := bb.c.requestUrl("/repositories/%s/%s/pullrequests/", po.Owner, po.RepoSlug)
 	return bb.c.executeWithContext("POST", urlStr, data, po.ctx)
 }
