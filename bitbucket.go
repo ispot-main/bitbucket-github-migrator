@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"cmp"
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"mime/multipart"
+	"net/http"
 	"os"
 	"os/exec"
 	"slices"
@@ -66,6 +70,77 @@ func getPrs(bb *bitbucket.Client, owner string, repo string, destinationBranch s
 		return cmp.Compare(i.ID, j.ID)
 	})
 	return prs
+}
+
+func createMigrationPR(bb *bitbucket.Client, owner string, repo string) {
+	const branchName string = "create-migration-notice"
+	// Step 1: Upload file to branch "foo"
+	err := uploadFileToBranch(owner, repo, branchName, "README.md", []byte("hello world"))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("File uploaded.")
+
+	opt := &bitbucket.PullRequestsOptions{
+		Owner:        owner,
+		RepoSlug:     repo,
+		Title:        "Add Github migration notice",
+		SourceBranch: branchName,
+	}
+
+	_, err = bb.Repositories.PullRequests.Create(opt)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Migration PR notice created at https://bitbucket.org/%s/%s", owner, repo)
+}
+
+func uploadFileToBranch(bb *bitbucket.Client, owner string, repo string, branch string, filename string, content []byte) error {
+	bb.HttpClient.Post("")
+	urlStr := bb.c.requestUrl("/repositories/%s/%s/pullrequests/", po.Owner, po.RepoSlug)
+	return bb.c.executeWithContext("POST", urlStr, data, po.ctx)
+}
+
+func uploadFileToBranchbla(owner string, repo string, branch string, filename string, content []byte) error {
+	url := fmt.Sprintf("https://api.bitbucket.org/2.0/repositories/%s/%s/src", owner, repo)
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	// Commit message and branch
+	_ = writer.WriteField("message", "add "+filename)
+	_ = writer.WriteField("branch", branch)
+
+	// File content
+	part, err := writer.CreateFormFile("/"+filename, filename)
+	if err != nil {
+		return err
+	}
+	_, err = part.Write(content)
+	if err != nil {
+		return err
+	}
+	writer.Close()
+
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return err
+	}
+	req.SetBasicAuth(config.bbUsername, config.bbPassword)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 201 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("upload failed: %s", respBody)
+	}
+	return nil
 }
 
 /////////////////////////////////
