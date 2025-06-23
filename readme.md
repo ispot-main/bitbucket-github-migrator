@@ -32,7 +32,7 @@ GITHUB_DRYRUN=true
 GITHUB_PRIVATE_VISIBILITY=internal
 # runs the program before git push to github
 # passes the full path to the current repo as an argument
-GITHUB_RUN_PROGRAM=/Users/calebparks/misc/gobtg/scripts/removeBigObjects.sh
+GITHUB_RUN_PROGRAM=noop
 
 MIGRATE_REPO_CONTENTS=true
 # it's suggested to migrate repo settings if you migrate repo contents
