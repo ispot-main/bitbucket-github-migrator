@@ -1,5 +1,5 @@
 # BTG
-A program for migrating from Bitbucket to Github
+A program for migrating repos from a Bitbucket Cloud workspace to a Github organization
 
 
 ## Usage
