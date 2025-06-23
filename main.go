@@ -44,8 +44,8 @@ func main() {
 		ghToken:             os.Getenv("GITHUB_TOKEN"),
 		dryRun:              getEnvVarAsBool("GITHUB_DRYRUN"),
 		overwrite:           getEnvVarAsBool("GITHUB_OVERWRITE"),
-		visibility:          os.Getenv("GITHUB_PRIVATE_VISIBILITY"),
-		runProgram:          os.Getenv("GITHUB_RUN_PROGRAM"),
+		visibility:          getEnvOrDefault("GITHUB_PRIVATE_VISIBILITY", "internal"),
+		runProgram:          getEnvOrDefault("GITHUB_RUN_PROGRAM", "noop"),
 		repoFile:            os.Getenv("REPO_FILE"),
 		migrateRepoContents: getEnvVarAsBool("MIGRATE_REPO_CONTENTS"),
 		migrateRepoSettings: getEnvVarAsBool("MIGRATE_REPO_SETTINGS"),
@@ -69,6 +69,16 @@ func main() {
 	githubClient := github.NewClient(nil).WithAuthToken(config.ghToken)
 
 	migrateRepos(githubClient, bitbucketClient, repos, config)
+}
+
+// returns defaultVal if envVar is not present or empty
+func getEnvOrDefault(envVar string, defaultVal string) string {
+	result := os.Getenv(envVar)
+	if result == "" {
+		return defaultVal
+	} else {
+		return result
+	}
 }
 
 func getEnvVarAsBool(envVar string) bool {
