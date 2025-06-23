@@ -21,6 +21,8 @@ type settings struct {
 	ghToken             string
 	dryRun              bool
 	overwrite           bool
+	visibility          string
+	runProgram          string
 	repoFile            string
 	migrateRepoContents bool
 	migrateRepoSettings bool
@@ -42,6 +44,8 @@ func main() {
 		ghToken:             os.Getenv("GITHUB_TOKEN"),
 		dryRun:              getEnvVarAsBool("GITHUB_DRYRUN"),
 		overwrite:           getEnvVarAsBool("GITHUB_OVERWRITE"),
+		visibility:          getEnvOrDefault("GITHUB_PRIVATE_VISIBILITY", "internal"),
+		runProgram:          getEnvOrDefault("GITHUB_RUN_PROGRAM", "noop"),
 		repoFile:            os.Getenv("REPO_FILE"),
 		migrateRepoContents: getEnvVarAsBool("MIGRATE_REPO_CONTENTS"),
 		migrateRepoSettings: getEnvVarAsBool("MIGRATE_REPO_SETTINGS"),
@@ -65,6 +69,16 @@ func main() {
 	githubClient := github.NewClient(nil).WithAuthToken(config.ghToken)
 
 	migrateRepos(githubClient, bitbucketClient, repos, config)
+}
+
+// returns defaultVal if envVar is not present or empty
+func getEnvOrDefault(envVar string, defaultVal string) string {
+	result := os.Getenv(envVar)
+	if result == "" {
+		return defaultVal
+	} else {
+		return result
+	}
 }
 
 func getEnvVarAsBool(envVar string) bool {
@@ -135,13 +149,14 @@ func migrateRepo(gh *github.Client, bb *bitbucket.Client, repoName string, confi
 	fmt.Println("Migrating to Github")
 	ghRepo := createRepo(gh, bbRepo, config)
 	if config.migrateRepoContents {
-		pushRepoToGithub(config.ghOrg, repoFolder, *ghRepo.Name, config.dryRun)
+		pushRepoToGithub(repoFolder, repoName, config)
 	} else {
 		fmt.Println("Skipping repo contents")
 	}
 	if config.migrateRepoSettings {
 		updateRepo(gh, config.ghOrg, ghRepo, config.dryRun)
 		updateRepoTopics(gh, config.ghOrg, ghRepo, config.dryRun)
+		updateCustomProperties(gh, config.ghOrg, ghRepo, config.dryRun, bbRepo.Project.Name)
 	} else {
 		fmt.Println("Skipping repo settings")
 	}

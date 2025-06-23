@@ -19,9 +19,15 @@ func cleanTopic(input string) string {
 }
 
 func createRepo(gh *github.Client, repo *bitbucket.Repository, config settings) *github.Repository {
+	var visibility string
+	if repo.Is_private {
+		visibility = config.visibility
+	} else {
+		visibility = "public"
+	}
 	ghRepo := &github.Repository{
 		Name:          github.Ptr(repo.Slug),
-		Private:       github.Ptr(repo.Is_private),
+		Visibility:    github.Ptr(visibility),
 		Description:   github.Ptr(repo.Description),
 		DefaultBranch: github.Ptr(repo.Mainbranch.Name),
 		Language:      github.Ptr(repo.Language),
@@ -82,6 +88,23 @@ func updateRepoTopics(gh *github.Client, githubOrg string, ghRepo *github.Reposi
 	if err != nil {
 		log.Fatalf("failed to update topics for repo %s, error: %s", *ghRepo.Name, err)
 	}
+}
+
+func updateCustomProperties(gh *github.Client, githubOrg string, ghRepo *github.Repository, dryRun bool, projectName string) {
+	customProps := []*github.CustomPropertyValue{
+		{
+			PropertyName: "bitbucket",
+			Value:        "true",
+		},
+		{
+			PropertyName: "project",
+			Value:        cleanTopic(projectName),
+		},
+	}
+	if dryRun {
+		return
+	}
+	gh.Repositories.CreateOrUpdateCustomProperties(context.Background(), githubOrg, *ghRepo.Name, customProps)
 }
 
 func updateRepo(gh *github.Client, githubOrg string, ghRepo *github.Repository, dryRun bool) {
@@ -185,20 +208,35 @@ func createClosedPrs(gh *github.Client, githubOrg string, ghRepo *github.Reposit
 	}
 }
 
+func runProgram(repoFolder string, program string) ([]byte, error) {
+	if program != "noop" {
+		cmd := exec.Command(program, repoFolder)
+		return cmd.CombinedOutput()
+	} else {
+		return []byte{}, nil
+	}
+}
+
 // pushes all repo branches&tags to Github with --mirror option.
 // default branch may get updated as a side-effect
-func pushRepoToGithub(githubOrg string, repoFolder string, repoName string, dryRun bool) {
+func pushRepoToGithub(repoFolder string, repoName string, config settings) {
 	const newOrigin string = "newOrigin"
 
-	cmd := exec.Command("git", "remote", "add", newOrigin, fmt.Sprintf("https://github.com/%s/%s.git", githubOrg, repoName))
+	cmd := exec.Command("git", "remote", "add", newOrigin, fmt.Sprintf("https://github.com/%s/%s.git", config.ghOrg, repoName))
 	cmd.Dir = repoFolder
 	output, err := cmd.CombinedOutput()
+	fmt.Println(string(output))
 	if err != nil {
 		log.Fatalf("Failed to add new git origin: %s\nOutput: %s", err, string(output))
 	}
-	fmt.Println(string(output))
 
-	if dryRun {
+	output, err = runProgram(repoFolder, config.runProgram)
+	fmt.Println(string(output))
+	if err != nil {
+		log.Fatalf("Failed to run custom program %s. err: %s", config.runProgram, err)
+	}
+
+	if config.dryRun {
 		return
 	}
 

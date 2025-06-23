@@ -1,5 +1,5 @@
 # BTG
-A program for migrating from Bitbucket to Github
+A program for migrating repos from a Bitbucket Cloud workspace to a Github organization
 
 
 ## Usage
@@ -27,6 +27,12 @@ GITHUB_TOKEN=CENSORED
 # whether overwriting existing github repo is allowed
 GITHUB_OVERWRITE=false
 GITHUB_DRYRUN=true
+# if the bitbucket repo is private this visibility setting will be chosen
+# it can be either private or internal
+GITHUB_PRIVATE_VISIBILITY=internal
+# runs the program before git push to github
+# passes the full path to the current repo as an argument
+GITHUB_RUN_PROGRAM=noop
 
 MIGRATE_REPO_CONTENTS=true
 # it's suggested to migrate repo settings if you migrate repo contents
@@ -49,3 +55,12 @@ If you get an error when pushing your git repo it is recommended to increase you
 `git config --global http.postBuffer 957286400`
 
 Credit to the tip from [this stackoverflow](https://stackoverflow.com/a/69891948)
+
+---
+
+If you get an error pushing because a file is more than 100MB, and you want to get rid of the file, you can use the GITHUB_RUN_PROGRAM argument. For example:
+```
+GITHUB_RUN_PROGRAM=/full/path/to/gobtg/scripts/removeBigObjects.sh
+```
+
+The `removeBigObjects.sh` is a script in this repo that removes any file more than 100MB. Read the script before running.
