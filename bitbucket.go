@@ -46,6 +46,53 @@ func cloneRepo(owner string, repo string) (tempfolderpath string) {
 	return tempDir
 }
 
+func updatePermissionsToReadOnly(bb *bitbucket.Client, owner string, repoName string, dryRun bool) {
+	ro := &bitbucket.RepositoryOptions{
+		Owner:    owner,
+		RepoSlug: repoName,
+	}
+	user_perms, err := bb.Repositories.Repository.ListUserPermissions(ro)
+	if err != nil {
+		panic(err)
+	}
+	group_perms, err := bb.Repositories.Repository.ListGroupPermissions(ro)
+	if err != nil {
+		panic(err)
+	}
+
+	if dryRun {
+		return
+	}
+
+	for _, userPerm := range user_perms.UserPermissions {
+		user := userPerm.User
+		permOpts := &bitbucket.RepositoryUserPermissionsOptions{
+			Owner:      owner,
+			RepoSlug:   repoName,
+			User:       user.AccountId,
+			Permission: "read",
+		}
+		_, err := bb.Repositories.Repository.SetUserPermissions(permOpts)
+		if err != nil {
+			log.Fatalf("Failed to update user permission for %s: %v", user.Username, err)
+		}
+	}
+
+	for _, groupPerm := range group_perms.GroupPermissions {
+		groupSlug := groupPerm.Group.Slug
+		permOpts := &bitbucket.RepositoryGroupPermissionsOptions{
+			Owner:      owner,
+			RepoSlug:   repoName,
+			Group:      groupSlug,
+			Permission: "read",
+		}
+		_, err := bb.Repositories.Repository.SetGroupPermissions(permOpts)
+		if err != nil {
+			log.Fatalf("Failed to update group permission for %s: %v", groupSlug, err)
+		}
+	}
+}
+
 func getPrs(bb *bitbucket.Client, owner string, repo string, destinationBranch string) *PullRequests {
 	opt := &bitbucket.PullRequestsOptions{
 		Owner:             owner,

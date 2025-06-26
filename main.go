@@ -171,7 +171,10 @@ func migrateRepo(gh *github.Client, bb *bitbucket.Client, repoName string, confi
 		fmt.Println("Skipping closed PR's")
 	}
 	fmt.Println("done migrating repo")
-	fmt.Println()
+
+	// if config.revokeOldPermissions {}
+	fmt.Println("revoking old bitbucket permissions to prevent accidental writes")
+	updatePermissionsToReadOnly(bb, config.bbWorkspace, repoName, config.dryRun)
 
 	// sleep for .5s to help avoid github rate limit
 	time.Sleep(time.Millisecond * 500)
