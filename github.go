@@ -41,7 +41,7 @@ func createRepo(gh *github.Client, repo *bitbucket.Repository, config settings) 
 		return ghRepo
 	}
 
-	fmt.Printf("Creating repo %s/%s", config.ghOrg, repo.Slug)
+	fmt.Printf("Creating repo %s/%s\n", config.ghOrg, repo.Slug)
 	repoCreated := false
 	_, _, err := gh.Repositories.Create(context.Background(), config.ghOrg, ghRepo)
 	if err != nil {
@@ -64,10 +64,10 @@ func createRepo(gh *github.Client, repo *bitbucket.Repository, config settings) 
 		time.Sleep(200 * time.Millisecond)
 		response, _, _ := gh.Repositories.Get(context.Background(), config.ghOrg, repo.Slug)
 		if response != nil {
-			log.Print("Repo has been created!")
+			fmt.Println("Repo has been created!")
 			return ghRepo
 		}
-		log.Printf("Waiting for repo %s to be available on GitHub (attempt %d)...", repo.Slug, i+1)
+		fmt.Printf("Waiting for repo %s to be available on GitHub (attempt %d)...", repo.Slug, i+1)
 		// Wait for a short period before retrying
 		time.Sleep(1 * time.Second)
 	}
