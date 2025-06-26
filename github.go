@@ -41,7 +41,6 @@ func createRepo(gh *github.Client, repo *bitbucket.Repository, config settings) 
 		return ghRepo
 	}
 
-	// todo bitbucket project as custom property?
 	fmt.Printf("Creating repo %s/%s", config.ghOrg, repo.Slug)
 	repoCreated := false
 	_, _, err := gh.Repositories.Create(context.Background(), config.ghOrg, ghRepo)
