@@ -22,6 +22,10 @@ BITBUCKET_TOKEN=CENSORED
 # (this helps prevent people accidentily writing to the old repo)
 BITBUCKET_REVOKEOLDPERMS=false
 
+# valid values are either ssh or https
+# choose whatever method you use in the terminal
+CLONE_VIA=ssh
+
 GITHUB_ORG=YOUR_ORG_HERE
 # You can use a PAT of a user, but make sure the token owner is the org
 # The token MUST have write access to Administration, Contents, Issues, and Pull Requests

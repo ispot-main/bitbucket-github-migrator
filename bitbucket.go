@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/ktrysmt/go-bitbucket"
@@ -28,13 +29,18 @@ func getRepo(bb *bitbucket.Client, owner string, repoName string) *bitbucket.Rep
 }
 
 // clones repo to a temp folder
-func cloneRepo(owner string, repo string) (tempfolderpath string) {
-	tempDir, err := os.MkdirTemp("", fmt.Sprintf("%s-%s-*", owner, repo))
+func cloneRepo(repo string, config settings) (tempfolderpath string) {
+	tempDir, err := os.MkdirTemp("", fmt.Sprintf("%s-%s-*", config.bbWorkspace, repo))
 	if err != nil {
 		log.Fatalf("Failed to create temp directory: %s", err)
 	}
 
-	cloneURL := fmt.Sprintf("https://bitbucket.org/%s/%s.git", owner, repo)
+	var cloneURL string
+	if strings.ToLower(config.cloneVia) == "ssh" {
+		cloneURL = fmt.Sprintf("git@bitbucket.org:%s/%s.git", config.bbWorkspace, repo)
+	} else {
+		cloneURL = fmt.Sprintf("https://bitbucket.org/%s/%s.git", config.bbWorkspace, repo)
+	}
 	fmt.Printf("Cloning repository %s to %s\n", repo, tempDir)
 
 	cmd := exec.Command("git", "clone", "--mirror", cloneURL, tempDir)

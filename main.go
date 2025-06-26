@@ -18,6 +18,7 @@ type settings struct {
 	bbUsername          string
 	bbPassword          string
 	revokeOldPerms      bool
+	cloneVia            string
 	ghOrg               string
 	ghToken             string
 	dryRun              bool
@@ -42,6 +43,7 @@ func main() {
 		bbUsername:          os.Getenv("BITBUCKET_USER"),
 		bbPassword:          os.Getenv("BITBUCKET_TOKEN"),
 		revokeOldPerms:      getEnvVarAsBool("BITBUCKET_REVOKEOLDPERMS"),
+		cloneVia:            os.Getenv("CLONE_VIA"),
 		ghOrg:               os.Getenv("GITHUB_ORG"),
 		ghToken:             os.Getenv("GITHUB_TOKEN"),
 		dryRun:              getEnvVarAsBool("GITHUB_DRYRUN"),
@@ -141,7 +143,7 @@ func migrateRepo(gh *github.Client, bb *bitbucket.Client, repoName string, confi
 	bbRepo := getRepo(bb, config.bbWorkspace, repoName)
 	var repoFolder string
 	if config.migrateRepoContents {
-		repoFolder = cloneRepo(config.bbWorkspace, repoName)
+		repoFolder = cloneRepo(repoName, config)
 	}
 	var prs *PullRequests
 	if config.migrateOpenPrs || config.migrateClosedPrs {
@@ -180,7 +182,7 @@ func migrateRepo(gh *github.Client, bb *bitbucket.Client, repoName string, confi
 	} else {
 		fmt.Println("skipping revoking old bitbucket permissions")
 	}
-	fmt.Println("")
+	fmt.Print("-----------------------\n\n")
 
 	// sleep for .5s to help avoid github rate limit
 	time.Sleep(time.Millisecond * 500)
