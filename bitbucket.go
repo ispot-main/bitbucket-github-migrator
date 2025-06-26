@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"slices"
+	"time"
 
 	"github.com/ktrysmt/go-bitbucket"
 	"github.com/mitchellh/mapstructure"
@@ -47,6 +48,9 @@ func cloneRepo(owner string, repo string) (tempfolderpath string) {
 }
 
 func updatePermissionsToReadOnly(bb *bitbucket.Client, owner string, repoName string, dryRun bool) {
+	// number is arbitrary, just want to be nice to their API
+	const apiWaitTime = time.Millisecond * 16
+
 	ro := &bitbucket.RepositoryOptions{
 		Owner:    owner,
 		RepoSlug: repoName,
@@ -76,6 +80,7 @@ func updatePermissionsToReadOnly(bb *bitbucket.Client, owner string, repoName st
 		if err != nil {
 			log.Fatalf("Failed to update user permission for %s: %v", user.Username, err)
 		}
+		time.Sleep(apiWaitTime)
 	}
 
 	for _, groupPerm := range group_perms.GroupPermissions {
@@ -90,6 +95,7 @@ func updatePermissionsToReadOnly(bb *bitbucket.Client, owner string, repoName st
 		if err != nil {
 			log.Fatalf("Failed to update group permission for %s: %v", groupSlug, err)
 		}
+		time.Sleep(apiWaitTime)
 	}
 }
 
