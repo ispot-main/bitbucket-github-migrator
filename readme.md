@@ -20,6 +20,8 @@ BITBUCKET_USER=YOUR_USERNAME_HERE
 BITBUCKET_TOKEN=CENSORED
 # set to true to set all permissions to read after the migration
 # (this helps prevent people accidentily writing to the old repo)
+# Note this does not effect permissions inherited from the project
+# So there is still a risk of people writing to the repo after the migration
 BITBUCKET_REVOKEOLDPERMS=false
 
 # valid values are either ssh or https
