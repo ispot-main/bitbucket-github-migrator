@@ -224,13 +224,13 @@ func pushRepoToGithub(repoFolder string, repoName string, config settings) {
 	cmd := exec.Command("git", "remote", "add", newOrigin, fmt.Sprintf("https://github.com/%s/%s.git", config.ghOrg, repoName))
 	cmd.Dir = repoFolder
 	output, err := cmd.CombinedOutput()
-	fmt.Println(string(output))
+	fmt.Print(string(output))
 	if err != nil {
 		log.Fatalf("Failed to add new git origin: %s\nOutput: %s", err, string(output))
 	}
 
 	output, err = runProgram(repoFolder, config.runProgram)
-	fmt.Println(string(output))
+	fmt.Print(string(output))
 	if err != nil {
 		log.Fatalf("Failed to run custom program %s. err: %s", config.runProgram, err)
 	}
@@ -239,7 +239,7 @@ func pushRepoToGithub(repoFolder string, repoName string, config settings) {
 		return
 	}
 
-	log.Println("Pushing repo", repoName, "to github")
+	fmt.Println("Pushing repo", repoName, "to github")
 
 	cmd = exec.Command("git", "push", newOrigin, "--mirror")
 	cmd.Dir = repoFolder
@@ -247,5 +247,5 @@ func pushRepoToGithub(repoFolder string, repoName string, config settings) {
 	if err != nil {
 		log.Fatalf("Failed to push: %s\nOutput: %s", err, string(output))
 	}
-	fmt.Println(string(output))
+	fmt.Print(string(output))
 }
