@@ -18,6 +18,9 @@ BITBUCKET_WORKSPACE=YOUR_WORKSPACE_HERE
 # you can see your username in https://bitbucket.org/account/settings/
 BITBUCKET_USER=YOUR_USERNAME_HERE
 BITBUCKET_TOKEN=CENSORED
+# set to true to set all permissions to read after the migration
+# (this helps prevent people accidentily writing to the old repo)
+BITBUCKET_REVOKEOLDPERMS=false
 
 GITHUB_ORG=YOUR_ORG_HERE
 # You can use a PAT of a user, but make sure the token owner is the org
