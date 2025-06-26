@@ -141,6 +141,14 @@ func migrateRepos(gh *github.Client, bb *bitbucket.Client, repoList []string, co
 func migrateRepo(gh *github.Client, bb *bitbucket.Client, repoName string, config settings) {
 	fmt.Println("Getting bitbucket settings for", repoName)
 	bbRepo := getRepo(bb, config.bbWorkspace, repoName)
+
+	if config.revokeOldPerms {
+		fmt.Println("revoking old bitbucket permissions to prevent accidental writes")
+		updatePermissionsToReadOnly(bb, config.bbWorkspace, repoName, config.dryRun)
+	} else {
+		fmt.Println("skipping revoking old bitbucket permissions")
+	}
+
 	var repoFolder string
 	if config.migrateRepoContents {
 		repoFolder = cloneRepo(repoName, config)
@@ -175,13 +183,6 @@ func migrateRepo(gh *github.Client, bb *bitbucket.Client, repoName string, confi
 		fmt.Println("Skipping closed PR's")
 	}
 	fmt.Println("done migrating repo")
-
-	if config.revokeOldPerms {
-		fmt.Println("revoking old bitbucket permissions to prevent accidental writes")
-		updatePermissionsToReadOnly(bb, config.bbWorkspace, repoName, config.dryRun)
-	} else {
-		fmt.Println("skipping revoking old bitbucket permissions")
-	}
 	fmt.Print("-----------------------\n\n")
 
 	// sleep for .5s to help avoid github rate limit
