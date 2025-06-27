@@ -131,9 +131,10 @@ func migrateOpenPrs(gh *github.Client, githubOrg string, ghRepo *github.Reposito
 		if pr.State != "OPEN" {
 			continue
 		}
+		prID := strconv.Itoa(pr.ID)
 		prSummary := cleanBitbucketPRSummary(pr.Summary.Raw)
 		text := fmt.Sprintf("PR originally created by %s on %s. Migrated from bitbucket on %s\n\n---\n%s", pr.Author["display_name"].(string), pr.CreatedOn, time.Now().Format(time.RFC3339Nano), prSummary)
-		title := "Historical Bitbucket PR #" + strconv.Itoa(pr.ID) + ": " + pr.Title
+		title := "Historical Bitbucket PR #" + prID + ": " + pr.Title
 		branch := pr.Source["branch"].(map[string]any)["name"].(string)
 		gh_pr := &github.NewPullRequest{
 			Title: &title,
@@ -148,10 +149,12 @@ func migrateOpenPrs(gh *github.Client, githubOrg string, ghRepo *github.Reposito
 		newPr, _, err := gh.PullRequests.Create(context.Background(), githubOrg, *ghRepo.Name, gh_pr)
 		if err != nil {
 			if strings.Contains(err.Error(), "A pull request already exists") {
-				fmt.Printf("Skipping PR creation for PR %s, PR already exists\n", strconv.Itoa(pr.ID))
+				fmt.Printf("Skipping PR creation for PR %s, PR already exists\n", prID)
 				// sleep for .5s to help avoid github rate limit
 				time.Sleep(time.Millisecond * 500)
 				continue
+			} else if strings.Contains(err.Error(), "422 Validation Failed [{Resource:PullRequest Field:head Code:invalid Message:}]") {
+				fmt.Printf("Could not make PR %s, originating branch %s likely no longer exists", prID, *gh_pr.Head)
 			} else {
 				log.Fatalf("failed to create PR %s, error: %s", strconv.Itoa(pr.ID), err)
 			}
