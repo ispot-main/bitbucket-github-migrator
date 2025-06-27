@@ -41,8 +41,7 @@ func createRepo(gh *github.Client, repo *bitbucket.Repository, config settings) 
 		return ghRepo
 	}
 
-	// todo bitbucket project as custom property?
-	fmt.Printf("Creating repo %s/%s", config.ghOrg, repo.Slug)
+	fmt.Printf("Creating repo %s/%s\n", config.ghOrg, repo.Slug)
 	repoCreated := false
 	_, _, err := gh.Repositories.Create(context.Background(), config.ghOrg, ghRepo)
 	if err != nil {
@@ -65,10 +64,10 @@ func createRepo(gh *github.Client, repo *bitbucket.Repository, config settings) 
 		time.Sleep(200 * time.Millisecond)
 		response, _, _ := gh.Repositories.Get(context.Background(), config.ghOrg, repo.Slug)
 		if response != nil {
-			log.Print("Repo has been created!")
+			fmt.Println("Repo has been created!")
 			return ghRepo
 		}
-		log.Printf("Waiting for repo %s to be available on GitHub (attempt %d)...", repo.Slug, i+1)
+		fmt.Printf("Waiting for repo %s to be available on GitHub (attempt %d)...", repo.Slug, i+1)
 		// Wait for a short period before retrying
 		time.Sleep(1 * time.Second)
 	}
@@ -132,9 +131,10 @@ func migrateOpenPrs(gh *github.Client, githubOrg string, ghRepo *github.Reposito
 		if pr.State != "OPEN" {
 			continue
 		}
+		prID := strconv.Itoa(pr.ID)
 		prSummary := cleanBitbucketPRSummary(pr.Summary.Raw)
 		text := fmt.Sprintf("PR originally created by %s on %s. Migrated from bitbucket on %s\n\n---\n%s", pr.Author["display_name"].(string), pr.CreatedOn, time.Now().Format(time.RFC3339Nano), prSummary)
-		title := "Historical Bitbucket PR #" + strconv.Itoa(pr.ID) + ": " + pr.Title
+		title := "Historical Bitbucket PR #" + prID + ": " + pr.Title
 		branch := pr.Source["branch"].(map[string]any)["name"].(string)
 		gh_pr := &github.NewPullRequest{
 			Title: &title,
@@ -149,15 +149,17 @@ func migrateOpenPrs(gh *github.Client, githubOrg string, ghRepo *github.Reposito
 		newPr, _, err := gh.PullRequests.Create(context.Background(), githubOrg, *ghRepo.Name, gh_pr)
 		if err != nil {
 			if strings.Contains(err.Error(), "A pull request already exists") {
-				fmt.Printf("Skipping PR creation for PR %s, PR already exists\n", strconv.Itoa(pr.ID))
-				// sleep for .5s to help avoid github rate limit
-				time.Sleep(time.Millisecond * 500)
-				continue
+				fmt.Printf("Skipping PR creation for PR %s, PR already exists\n", prID)
+			} else if strings.Contains(err.Error(), "422 Validation Failed [{Resource:PullRequest Field:head Code:invalid Message:}]") {
+				fmt.Printf("Could not make PR %s, originating branch %s likely no longer exists\n", prID, *gh_pr.Head)
 			} else {
 				log.Fatalf("failed to create PR %s, error: %s", strconv.Itoa(pr.ID), err)
 			}
+			// sleep for .5s to help avoid github rate limit
+			time.Sleep(time.Millisecond * 500)
+			continue
 		}
-		fmt.Printf("Migrated BB PR %s as GH PR %s\n", strconv.Itoa(pr.ID), strconv.Itoa(*newPr.Number))
+		fmt.Printf("Migrated BB PR %s as GH PR %s\n", prID, strconv.Itoa(*newPr.Number))
 
 		// sleep for .5s to help avoid github rate limit
 		time.Sleep(time.Millisecond * 500)
@@ -225,13 +227,13 @@ func pushRepoToGithub(repoFolder string, repoName string, config settings) {
 	cmd := exec.Command("git", "remote", "add", newOrigin, fmt.Sprintf("https://github.com/%s/%s.git", config.ghOrg, repoName))
 	cmd.Dir = repoFolder
 	output, err := cmd.CombinedOutput()
-	fmt.Println(string(output))
+	fmt.Print(string(output))
 	if err != nil {
 		log.Fatalf("Failed to add new git origin: %s\nOutput: %s", err, string(output))
 	}
 
 	output, err = runProgram(repoFolder, config.runProgram)
-	fmt.Println(string(output))
+	fmt.Print(string(output))
 	if err != nil {
 		log.Fatalf("Failed to run custom program %s. err: %s", config.runProgram, err)
 	}
@@ -240,7 +242,7 @@ func pushRepoToGithub(repoFolder string, repoName string, config settings) {
 		return
 	}
 
-	log.Println("Pushing repo", repoName, "to github")
+	fmt.Println("Pushing repo", repoName, "to github")
 
 	cmd = exec.Command("git", "push", newOrigin, "--mirror")
 	cmd.Dir = repoFolder
@@ -248,5 +250,5 @@ func pushRepoToGithub(repoFolder string, repoName string, config settings) {
 	if err != nil {
 		log.Fatalf("Failed to push: %s\nOutput: %s", err, string(output))
 	}
-	fmt.Println(string(output))
+	fmt.Print(string(output))
 }

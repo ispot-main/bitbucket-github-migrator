@@ -17,6 +17,8 @@ type settings struct {
 	bbWorkspace         string
 	bbUsername          string
 	bbPassword          string
+	revokeOldPerms      bool
+	cloneVia            string
 	ghOrg               string
 	ghToken             string
 	dryRun              bool
@@ -40,6 +42,8 @@ func main() {
 		bbWorkspace:         os.Getenv("BITBUCKET_WORKSPACE"),
 		bbUsername:          os.Getenv("BITBUCKET_USER"),
 		bbPassword:          os.Getenv("BITBUCKET_TOKEN"),
+		revokeOldPerms:      getEnvVarAsBool("BITBUCKET_REVOKEOLDPERMS"),
+		cloneVia:            os.Getenv("CLONE_VIA"),
 		ghOrg:               os.Getenv("GITHUB_ORG"),
 		ghToken:             os.Getenv("GITHUB_TOKEN"),
 		dryRun:              getEnvVarAsBool("GITHUB_DRYRUN"),
@@ -135,11 +139,19 @@ func migrateRepos(gh *github.Client, bb *bitbucket.Client, repoList []string, co
 }
 
 func migrateRepo(gh *github.Client, bb *bitbucket.Client, repoName string, config settings) {
-	fmt.Println("Getting bitbucket settings & downloading", repoName)
+	fmt.Println("Getting bitbucket settings for", repoName)
 	bbRepo := getRepo(bb, config.bbWorkspace, repoName)
+
+	if config.revokeOldPerms {
+		fmt.Println("revoking old bitbucket permissions to prevent accidental writes")
+		updatePermissionsToReadOnly(bb, config.bbWorkspace, repoName, config.dryRun)
+	} else {
+		fmt.Println("skipping revoking old bitbucket permissions")
+	}
+
 	var repoFolder string
 	if config.migrateRepoContents {
-		repoFolder = cloneRepo(config.bbWorkspace, repoName)
+		repoFolder = cloneRepo(repoName, config)
 	}
 	var prs *PullRequests
 	if config.migrateOpenPrs || config.migrateClosedPrs {
@@ -171,7 +183,7 @@ func migrateRepo(gh *github.Client, bb *bitbucket.Client, repoName string, confi
 		fmt.Println("Skipping closed PR's")
 	}
 	fmt.Println("done migrating repo")
-	fmt.Println()
+	fmt.Print("-----------------------\n\n")
 
 	// sleep for .5s to help avoid github rate limit
 	time.Sleep(time.Millisecond * 500)

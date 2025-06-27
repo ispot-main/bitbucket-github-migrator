@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"slices"
+	"strings"
+	"time"
 
 	"github.com/ktrysmt/go-bitbucket"
 	"github.com/mitchellh/mapstructure"
@@ -27,13 +29,18 @@ func getRepo(bb *bitbucket.Client, owner string, repoName string) *bitbucket.Rep
 }
 
 // clones repo to a temp folder
-func cloneRepo(owner string, repo string) (tempfolderpath string) {
-	tempDir, err := os.MkdirTemp("", fmt.Sprintf("%s-%s-*", owner, repo))
+func cloneRepo(repo string, config settings) (tempfolderpath string) {
+	tempDir, err := os.MkdirTemp("", fmt.Sprintf("%s-%s-*", config.bbWorkspace, repo))
 	if err != nil {
 		log.Fatalf("Failed to create temp directory: %s", err)
 	}
 
-	cloneURL := fmt.Sprintf("https://bitbucket.org/%s/%s.git", owner, repo)
+	var cloneURL string
+	if strings.ToLower(config.cloneVia) == "ssh" {
+		cloneURL = fmt.Sprintf("git@bitbucket.org:%s/%s.git", config.bbWorkspace, repo)
+	} else {
+		cloneURL = fmt.Sprintf("https://bitbucket.org/%s/%s.git", config.bbWorkspace, repo)
+	}
 	fmt.Printf("Cloning repository %s to %s\n", repo, tempDir)
 
 	cmd := exec.Command("git", "clone", "--mirror", cloneURL, tempDir)
@@ -44,6 +51,58 @@ func cloneRepo(owner string, repo string) (tempfolderpath string) {
 	fmt.Println(string(output))
 
 	return tempDir
+}
+
+func updatePermissionsToReadOnly(bb *bitbucket.Client, owner string, repoName string, dryRun bool) {
+	// number is arbitrary, just want to be nice to their API
+	const apiWaitTime = time.Millisecond * 16
+
+	ro := &bitbucket.RepositoryOptions{
+		Owner:    owner,
+		RepoSlug: repoName,
+	}
+	user_perms, err := bb.Repositories.Repository.ListUserPermissions(ro)
+	if err != nil {
+		panic(err)
+	}
+	group_perms, err := bb.Repositories.Repository.ListGroupPermissions(ro)
+	if err != nil {
+		panic(err)
+	}
+
+	if dryRun {
+		return
+	}
+
+	for _, userPerm := range user_perms.UserPermissions {
+		user := userPerm.User
+		permOpts := &bitbucket.RepositoryUserPermissionsOptions{
+			Owner:      owner,
+			RepoSlug:   repoName,
+			User:       user.AccountId,
+			Permission: "read",
+		}
+		_, err := bb.Repositories.Repository.SetUserPermissions(permOpts)
+		if err != nil {
+			log.Fatalf("Failed to update user permission for %s: %v", user.Username, err)
+		}
+		time.Sleep(apiWaitTime)
+	}
+
+	for _, groupPerm := range group_perms.GroupPermissions {
+		groupSlug := groupPerm.Group.Slug
+		permOpts := &bitbucket.RepositoryGroupPermissionsOptions{
+			Owner:      owner,
+			RepoSlug:   repoName,
+			Group:      groupSlug,
+			Permission: "read",
+		}
+		_, err := bb.Repositories.Repository.SetGroupPermissions(permOpts)
+		if err != nil {
+			log.Fatalf("Failed to update group permission for %s: %v", groupSlug, err)
+		}
+		time.Sleep(apiWaitTime)
+	}
 }
 
 func getPrs(bb *bitbucket.Client, owner string, repo string, destinationBranch string) *PullRequests {

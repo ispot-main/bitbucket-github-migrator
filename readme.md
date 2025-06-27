@@ -18,6 +18,15 @@ BITBUCKET_WORKSPACE=YOUR_WORKSPACE_HERE
 # you can see your username in https://bitbucket.org/account/settings/
 BITBUCKET_USER=YOUR_USERNAME_HERE
 BITBUCKET_TOKEN=CENSORED
+# set to true to set all permissions to read when the migration starts
+# (this helps prevent people accidentily writing to the old repo)
+# Note this does not effect permissions inherited from the project
+# You can manually revoke those permissions if you choose to do so
+BITBUCKET_REVOKEOLDPERMS=false
+
+# valid values are either ssh or https
+# choose whatever method you use in the terminal
+CLONE_VIA=ssh
 
 GITHUB_ORG=YOUR_ORG_HERE
 # You can use a PAT of a user, but make sure the token owner is the org
