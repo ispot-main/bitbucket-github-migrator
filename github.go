@@ -150,16 +150,16 @@ func migrateOpenPrs(gh *github.Client, githubOrg string, ghRepo *github.Reposito
 		if err != nil {
 			if strings.Contains(err.Error(), "A pull request already exists") {
 				fmt.Printf("Skipping PR creation for PR %s, PR already exists\n", prID)
-				// sleep for .5s to help avoid github rate limit
-				time.Sleep(time.Millisecond * 500)
-				continue
 			} else if strings.Contains(err.Error(), "422 Validation Failed [{Resource:PullRequest Field:head Code:invalid Message:}]") {
 				fmt.Printf("Could not make PR %s, originating branch %s likely no longer exists", prID, *gh_pr.Head)
 			} else {
 				log.Fatalf("failed to create PR %s, error: %s", strconv.Itoa(pr.ID), err)
 			}
+			// sleep for .5s to help avoid github rate limit
+			time.Sleep(time.Millisecond * 500)
+			continue
 		}
-		fmt.Printf("Migrated BB PR %s as GH PR %s\n", strconv.Itoa(pr.ID), strconv.Itoa(*newPr.Number))
+		fmt.Printf("Migrated BB PR %s as GH PR %s\n", prID, strconv.Itoa(*newPr.Number))
 
 		// sleep for .5s to help avoid github rate limit
 		time.Sleep(time.Millisecond * 500)
