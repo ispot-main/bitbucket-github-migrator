@@ -29,7 +29,7 @@ BITBUCKET_REVOKEOLDPERMS=false
 CLONE_VIA=ssh
 
 GITHUB_ORG=YOUR_ORG_HERE
-# You can use a PAT of a user, but make sure the token owner is the org
+# You can use a fine-grained PAT of a user, but make sure the token owner is the org
 # The token MUST have write access to Administration, Contents, Issues, and Pull Requests
 GITHUB_TOKEN=CENSORED
 
